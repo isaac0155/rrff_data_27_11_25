@@ -1,0 +1,229 @@
+<!-- Incluir jQuery -->
+<script src="https://code.jquery.com/jquery-3.5.1.js"></script>
+
+<!-- Incluir Popper.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+
+<!-- Incluir Bootstrap JS -->
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+
+<!-- Incluye Bootstrap Table JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.18.0/bootstrap-table.min.js"></script>
+
+<!-- Incluye Bootstrap Table CSS -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.18.0/bootstrap-table.min.css">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.2/xlsx.full.min.js"></script>
+<div class="container p-4 bg-white">
+    <div class="text-center p-3 align-items-center">
+        <h2>Detalle de llamadas de {{resultado.telefono}}</h2>
+        <p class="text-danger">La información proporcionada por este sitio es confidencial, y se tiene los debidos
+            controles para su correcta auditoría.</p>
+    </div>
+    <div class="row col-md-9s mx-auto">
+        <div class="col-lg-5 mx-auto" style="background: rgb(255, 255, 255);">
+            <table class="table table-sm table-hover">
+                {{#if user}}
+
+                <tr>
+                    <td style="font-weight: bold; width: 200px;">Ticket respaldo:</td>
+                    <td>{{resultado.ticket}}</td>
+                </tr>
+                <tr>
+                    <td style="font-weight: bold; width: 200px;">Responsable:</td>
+                    <td>{{resultado.ad}}</td>
+                </tr>
+                <tr>
+                    <td style="font-weight: bold; width: 200px;">Fecha de Consulta:</td>
+                    <td>{{resultado.fecha}}</td>
+                </tr>
+                <tr>
+                    <td style="font-weight: bold; width: 200px;">IP:</td>
+                    <td>{{resultado.ip}}</td>
+                </tr>
+                {{/if}}
+                <tr>
+                    <td style="font-weight: bold; width: 200px;">Telefono Buscado:</td>
+                    <td>{{resultado.telefono}}</td>
+                </tr>
+                <tr>
+                    <td style="font-weight: bold; width: 200px;">Fecha Inicio:</td>
+                    <td>{{resultado.fechaIni}}</td>
+                </tr>
+                <tr>
+                    <td style="font-weight: bold; width: 200px;">Fecha Fin:</td>
+                    <td>{{resultado.fechaFin}}</td>
+                </tr>
+                <tr>
+                    <td style="font-weight: bold; width: 200px; word-break:break-all;">Datos de Terceros</td>
+                    {{#equals resultado.ofuscado '1'}}
+                    <td style="word-break:break-all;" class="text-success">OFUSCADO</td>
+                    {{else}}
+                    <td style="word-break:break-all;" class="text-danger">COMPLETO</td>
+                    {{/equals}}
+                </tr>
+            </table>
+
+        </div>
+        <hr>
+        <h4 id="resssssda">Resultados</h4>
+        <div id="tableContainer" class="table-responsive">
+            <button class="btn btn-success" type="button" disabled>
+                <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                <span role="status">Cargando Datos, por favor tenga paciencia...</span>
+            </button>
+        </div>
+
+
+    </div>
+</div>
+<!-- Modal -->
+<div class="modal fade" id="staticBackdrop" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+    aria-labelledby="staticBackdropLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5" id="staticBackdropLabel">Buscando datos, por favor espere</h1>
+            </div>
+            <div class="modal-body">
+                <div class="text-center text-success">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden"></span>
+                    </div>
+                    <span role="status">Loading...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        var resultado = "{{resultado.resultado}}";
+        //console.log(resultado);
+
+        if (resultado === '') {
+            // Obtener la referencia al elemento modal
+            const modal = document.getElementById('staticBackdrop');
+
+            // Crear una instancia del objeto Modal con opciones específicas para mantenerlo estático
+            const modalInstance = new bootstrap.Modal(modal, {
+                backdrop: 'static', // No cierra el modal al hacer clic fuera de él
+                keyboard: false     // No permite cerrar el modal con la tecla ESC
+            });
+
+            // Mostrar el modal
+            modalInstance.show();
+        } else {
+            resultado = resultado === '0' ? '[]' : resultado;
+            try {
+                // Decodificar las entidades HTML
+                var resultadoDecodificado = resultado.replace(/&quot;/g, '"');
+
+                // Eliminar caracteres de control inválidos
+                resultadoDecodificado = resultadoDecodificado.replace(/[\u0000-\u001F\u007F-\u009F]/g, "");
+
+                // Convertir la cadena en un objeto JSON
+                var objetoJSON = JSON.parse(resultadoDecodificado);
+                document.getElementById('resssssda').innerHTML = 'Resultados: ' + objetoJSON.length;
+
+                if (objetoJSON.length > 0) {
+                    generateTableAndDownloadButton(objetoJSON);
+                } else {
+                    document.getElementById('tableContainer').innerHTML = 'No hay resultados para mostrar.';
+                }
+            } catch (error) {
+                console.error('Error al convertir resultado a JSON:', error);
+            }
+        }
+
+        socket.on('server:recargardetalledellamadas{{resultado.idPeticionescc}}', () => {
+            location.reload();
+        });
+
+        function generateTableAndDownloadButton(dataArray) {
+            const container = document.getElementById('tableContainer');
+
+            // Crear botón de descarga
+            const downloadBtn = document.createElement('button');
+            downloadBtn.className = 'btn btn-warning mb-3 btn-sm';
+            downloadBtn.textContent = 'Descargar toda la tabla';
+            downloadBtn.id = 'descargattt'
+            downloadBtn.onclick = () => downloadJSONAsExcel(dataArray, 'Detalle_Llamadas_{{resultado.idPeticionescc}}_{{resultado.telefono}}.xlsx');
+
+            // Crear tabla
+            const table = document.createElement('table');
+            table.id = 'tabla';
+            table.className = 'table table-striped table-hover table-sm';
+            
+            //message
+            const mess = document.createElement('p');
+            mess.className = 'text-danger';
+
+            // Añadir cabecera
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            Object.keys(dataArray[0]).forEach(key => {
+                const th = document.createElement('th');
+                th.textContent = key;
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+
+            if(dataArray.length > 100){
+                mess.innerHTML = 'Solo se muestran los primeros 100 resultados. Descarga el excel para ver todos los resultados.';
+            }
+            // Añadir cuerpo
+            const tbody = document.createElement('tbody');
+            dataArray.slice(0, 100).forEach(obj => {
+                const tr = document.createElement('tr');
+                Object.values(obj).forEach(value => {
+                    const td = document.createElement('td');
+                    td.textContent = value;
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+            table.appendChild(tbody);
+
+            // Añadir elementos al contenedor
+            container.innerHTML = '';
+            container.appendChild(downloadBtn);
+            container.appendChild(mess)
+            container.appendChild(table);
+            $('#tabla').bootstrapTable({
+                pagination: true,
+                sortable: true,
+                search: true
+            });
+            //document.getElementById('tabla').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function downloadTableAsExcel(tableId) {
+
+            const table = document.getElementById(tableId);
+            const ws = XLSX.utils.table_to_sheet(table);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+
+            // Escribe el archivo
+            XLSX.writeFile(wb, 'Detalle_Llamadas_{{resultado.idPeticionescc}}_{{resultado.telefono}}.xlsx');
+        }
+
+    });
+    async function downloadJSONAsExcel(jsonData, fileName) {
+        document.getElementById('descargattt').disabled = true
+        const ws = XLSX.utils.json_to_sheet(jsonData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+
+        // Escribe el archivo
+        await XLSX.writeFile(wb, fileName);
+
+        document.getElementById('descargattt').disabled = false
+    }
+
+</script>

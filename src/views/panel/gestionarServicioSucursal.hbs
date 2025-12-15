@@ -1,0 +1,83 @@
+<div class="container p-4">
+    <div class="row">
+        
+        <div class="card">
+            <div class="card-header text-center p-3">
+                <h3>Asignar Servicios a {{sucursal.nombre}}</h3>
+                <h6>de {{sucursal.nombreCentro}}</h6>
+            </div>
+            <div class="card-body">
+            <p class="text-center">
+                Coloca el puntero del mouse o presiona prolongadamente para ver el detalle del Servicio.
+            </p>
+                {{!--  --}}
+                <div class="row mt-3">
+                    
+                    <div class="col-sm-6 mb-3 mt-3 mb-sm-0">
+                        <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Servicios asignados a {{sucursal.nombre}}</h5>
+                            <table class="table table-success table-hover ">
+                                <tbody>
+                                    {{#each serviciosSucursal}}
+                                    <tr>
+                                        <td class="fw-normal" title="{{detalle}}">{{nombre}}</td>
+                                        <td class="fw-normal">
+                                            <div class="d-grid gap-5 mt-0">
+                                                <button class="btn btn-danger mt-0 p-0" onclick="eliminarServ({{idServicioSucursal}})">Eliminar</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {{else}} 
+                                    <div class="alert alert-danger text-center" role="alert">
+                                        No hay Servicios Asignados a esta Sucursal.
+                                    </div>
+                                    {{/each}}
+                                </tbody>
+                            </table>
+                        </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 mb-3 mt-3 mb-sm-0">
+                        <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Servicios Disponibles</h5>
+                            <table class="table table-hover">
+                                <tbody>
+                                    {{#each servicios}}
+                                    <tr>
+                                        <td class="fw-normal" title="{{detalle}}">{{nombre}}</td>
+                                        <td class="fw-normal">
+                                            <div class="d-grid gap-5 mt-0">
+                                                <button class="btn btn-success mt-0 p-0" onclick="nuevoServ({{idServicio}})">Asignar</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {{else}} 
+                                    <div class="alert alert-danger text-center" role="alert">
+                                        No hay Servicios Disponibles.
+                                    </div>
+                                    {{/each}}
+                                </tbody>
+                            </table>
+                        </div>
+                        </div>
+                    </div>
+                </div>
+                {{!--  --}}
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    function nuevoServ(idServicio){
+        var idSucursal = {{sucursal.idSucursal}};
+        socket.emit('cliente:nuevoServicio', idServicio, idSucursal);
+    }
+    function eliminarServ(idServicioSucursal){
+        socket.emit('cliente:eliminarServicio', idServicioSucursal);
+    }
+    socket.on('server:reload', async () => {
+        location.reload();
+    });
+</script>

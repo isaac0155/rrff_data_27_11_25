@@ -1,0 +1,498 @@
+<div class="container p-4 bg-white ">
+    <div class="text-center p-3 mb-4 align-items-center">
+        <h2>FORMULARIO DE SOLICITUD DE INFORMACIÓN RRFF/OOJJ</h2>
+    </div>
+    <div class="">
+        <div class="row">
+            <div class="col-sm-6 mb-3 mb-sm-0">
+            <form id="miFormulario" class="form-inline">
+                <div class="card card-body">
+                        
+                    {{#if user}}
+                    <div class="mb-3">
+                        <h5 class="card-title">Código de Respaldo <label class="text-danger">*</label></h5>
+                        <input title="Numero código asociado al RRFF (Sólo para Administradores)" required type="text" class="form-control"
+                            name="pm" id="pm" placeholder="Ingresa Código de respaldo" autofocus>
+                    </div>
+                    {{/if}}
+                </div>
+                
+                <div class="card mt-3">
+                    <div class="card-body">
+                        <div class="container">
+                                <h5 class="card-title">Parámetros de búsqueda <label class="text-danger">*</label></h5>
+                                <div class="form-group">
+                                    {{!-- <label for="selectTipo" class="mr-2">Seleccione el tipo:</label> --}}
+                                    <div class="">
+                                        <select id="selectTipo" class="form-control " title="Click para ver Opciones"
+                                            placeholder="Seleccione una opcion" aria-label="Seleccione una opcion"
+                                            aria-describedby="btnAgregar">
+                                            <option value="telefono">Teléfono</option>
+                                            <option value="ci">CI</option>
+                                            <option value="imei">IMEI</option>
+                                            <option value="nombre">Nombre</option>
+                                            {{!--<option value="nombre_ci">Nombre y CI</option>--}}
+                                        </select>
+                                        <button type="button" title="Crea una nueva entrada de datos" id="btnAgregar" class="btn btn-success ml-2 mt-2">Añadir
+                                            </button>
+                                        {{#if user.Administrador}}
+                                        <button type="button" title="Crea una nueva entrada de datos masivo" id="btnAgregarVarios" onclick="agregarVarios()" class="btn btn-warning ml-2 mt-2">Añadir Varios
+                                            </button>
+                                        {{/if}}
+                                        <div id="agregarVariosContainer"></div>
+                                    </div>
+                                </div>
+                            </form>
+                            <div class="container" style="margin-left: -12px;">
+                                <button id="toggleTextarea" class="btn btn-outline-warning" style="display: none;">Dato Infinito</button>
+                            </div>
+                            <form id="enviarFormulario" class="formulario"> {{!-- action="/links/rrff" method="POST" --}}
+                                <div id="contenedorTextarea">
+                                    <!-- Aquí se añadirá el textarea -->
+                                </div>
+                                <div id="campos" class="mt-3"></div>
+                                <input type="hidden" id="opcionSeleccionada" name="opcionSeleccionada">
+                                <!-- Campo oculto -->
+                                <div id="camposDinamicos"></div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-6">
+                <div class="card card-body">
+                
+                    {{#if user}}
+                    <div class="mb-3">
+                        <h5 class="card-title">Tipo de Solicitud <label class="text-danger">*</label></h5>
+                        <select name="solicitud_type" class="form-control" id="solicitud_type" required>
+                            <option value="">Seleccione una opción</option>
+                            <option value="rrff">Requerimiento Fiscal</option>
+                            <option value="oojj">Orden Judicial</option>
+                        </select>
+                    </div>
+                    {{/if}}
+                </div>
+                <div class="card mt-3">
+                    <div class="card-body">
+                        {{!-- <h5 class="card-title">Special title treatment</h5> --}}
+                        {{!-- <h5 class="card-title">Special title treatment</h5> --}}
+                        <div class="container">
+                        <h5 class="card-title">Periodo de búsqueda <label class="text-danger">*</label></h5>
+                            <div class="" title="Busca registros de los ultimos 5 años">
+                                <input class="form-check-input" type="checkbox" value="" id="5anios" name="5anios">
+                                <label class="form-check-label" for="5anios">
+                                    ULTIMOS 5 AÑOS
+                                </label>
+                            </div>
+                            <div class="card bg-light">
+                                <div id="fechas" style="display:;">
+                                    <div class="row">
+                                        <div class="col-md-6" title="Rango de fecha inicial para la búsqueda">
+                                            <div class="card-body">
+                                                <label for="fechaIni" class="form-label">Fecha Inicio</label>
+                                                <input type="date" class="form-control" id="fechaIni" name="fechaIni" required>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6" title="Rango de fecha final para la búsqueda">
+                                            <div class="card-body">
+                                                <label for="fechaFin" class="form-label">Fecha Fin</label>
+                                                <input type="date" class="form-control" id="fechaFin" name="fechaFin" required>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <!-- Agregar campos checkbox -->
+                            <!-- <div class="mt-5 p-1" style="background: rgb(237, 255, 220);">
+                                <hr class="">
+                                <h5>Peticiones Call Center</h5>
+                                <div class="col-auto">
+                                    <input class="form-check-input" type="checkbox" value="" id="FLUJOLLAMADASODECO"
+                                        name="flujollamadasodeco">
+                                    <label class="form-check-label" for="FLUJOLLAMADASODECO">
+                                            DETALLE DE LLAMADAS
+                                    </label>
+                                </div>
+                                <div class="col-auto">
+                                    <input class="form-check-input" type="checkbox" value="" id="llamadasOfuscado"
+                                        name="llamadasOfuscado">
+                                    <label class="form-check-label" for="llamadasOfuscado">
+                                            PROTEGER DATOS DE TERCEROS
+                                    </label>
+                                </div>
+                                <hr class="">
+                            </div>-->
+                            <h5 class="">Peticiones RRFF <label class="text-danger">*</label></h5>
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="checkbox" value="" id="DATOSTITULAR"
+                                    name="datostitular" checked>
+                                <label class="form-check-label" for="DATOSTITULAR">
+                                    DATOS TITULAR
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="" id="REFERENCIAS"
+                                    name="referencias">
+                                <label class="form-check-label" for="REFERENCIAS">
+                                    REFERENCIAS TITULAR
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="" id="IMEI" name="imei">
+                                <label class="form-check-label" for="IMEI">
+                                    IMEI TITULAR
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="" id="FLUJOLLAMADAS"
+                                    name="flujollamadas">
+                                <label class="form-check-label" for="FLUJOLLAMADAS">
+                                    LLAMADAS
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="" id="FLUJOSMS" name="flujosms">
+                                <label class="form-check-label" for="FLUJOSMS">
+                                    SMS
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="" id="RADIOBASES"
+                                    name="radiobases">
+                                <label class="form-check-label" for="RADIOBASES">
+                                    RADIO BASES
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="" id="DATOSTITULARREF"
+                                    name="datostitularref">
+                                <label class="form-check-label" for="DATOSTITULARREF">
+                                    TITULARES VIVA
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="" id="IMEIREF" name="imeiref">
+                                <label class="form-check-label" for="IMEIREF">
+                                    FLUJO CON IMEI
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="" id="RECARGAS" name="recargas">
+                                <label class="form-check-label" for="RECARGAS">
+                                    RECARGAS y CREDITO
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="" id="FLUJODATOS" name="flujodatos">
+                                <label class="form-check-label" for="FLUJODATOS">
+                                    DATOS
+                                </label>
+                            </div>
+                            <input type="text" name="fecha" id="fecha" style="display: none;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+                            <div class="d-grid gap-2">
+                                <button type="submit" onclick="cargar()" class="btn btn-success" id="btnEnviar" disabled>Generar información solicitada</button>
+                            </div>
+                            <div id="mensaje" class="text-danger mt-2"></div>
+                </form>
+        </div>
+    </div>
+</div>
+
+<textarea name="" id=""></textarea>
+
+<!-- Button trigger modal -->
+{{!-- <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#staticBackdrop">
+    Launch static backdrop modal
+</button>fade --}}
+
+<!-- Modal -->
+{{!-- <div class="modal fade" id="staticBackdrop" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+    aria-labelledby="staticBackdropLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content ">
+            <div class="modal-header">
+            <div class="modal-body d-flex justify-content-center">
+                <div class="spinner-border text-success" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="" style="margin-left: 5px; margin-bottom: -10px; margin-top: 3px;">
+                    Cargando datos por favor espera...
+                </p>
+            </div>
+        </div>
+    </div>
+</div> --}}
+<script>
+    function agregarVarios(){
+        document.getElementById('camposDinamicos').innerHTML=''
+        const div = document.getElementById('agregarVariosContainer')
+        div.innerHTML = `
+            <textarea name="" class="form-control mt-3" id="datosMultiples" placeholder="campo1,campo2,campo3,..."></textarea>
+        `
+        document.getElementById('datosMultiples').addEventListener('input', validarTextarea);
+        document.getElementById('btnEnviar').disabled = true
+    }
+
+    let textareaCreated = false;
+
+        document.getElementById('toggleTextarea').addEventListener('click', function () {
+            const button = document.getElementById('toggleTextarea');
+            const container = document.getElementById('contenedorTextarea');
+            var ddtt = document.getElementById('btnAgregar')
+            if (textareaCreated) {
+                ddtt.disabled = false
+                // Eliminar textarea
+                container.innerHTML = '';
+                button.textContent = 'Dato Infinito';
+            } else {
+                ddtt.disabled= true
+                // Crear textarea
+                const textarea = document.createElement('textarea');
+                textarea.className = 'form-control mt-3';
+                textarea.rows = 4;
+                container.appendChild(textarea);
+                button.textContent = 'Borrar Dato Infinito';
+            }
+
+            textareaCreated = !textareaCreated;
+        });
+    socket.on('server:solicitudRRFF', (id) => {
+            window.location.href = "/links/requerimientoFiscal/resultado/RF_" + id;
+        });
+    document.addEventListener("DOMContentLoaded", function () {
+                // Agregar un único oyente de eventos al elemento 'body'
+                document.body.addEventListener("submit", function (event) {
+                    // Evitar el envío del formulario
+                    event.preventDefault();
+
+                    // Obtener el formulario que disparó el evento
+                    const form = event.target;
+                    // Recopilar los datos del formulario
+                    const formData = new FormData(form);
+                    const data = {};
+
+                    let datosMasivo = document.getElementById('datosMultiples')
+                    if(datosMasivo){
+                        datosMasivo = datosMasivo.value.trim().replace(/^,|,$/g, '').split(',')
+
+                        datosMasivo.forEach((element, index)=>{
+
+                            data['campo_' + index] = element
+                        })
+                        
+                    }else{
+                    }
+                        // Verificar que todos los campos requeridos estén llenos
+                        if (!form.checkValidity()) {
+                            // Mostrar mensajes de validación
+                            form.reportValidity();
+                            return;
+                        }
+                    formData.forEach((value, key) => {
+                        data[key] = value;
+                    });
+
+
+                    // Mostrar datos en la consola en formato JSON
+                    document.getElementById('btnEnviar').disabled = false
+                    socket.emit('cliente:solicitudRRFF', data, {{user.idPersona}}, '{{dataip}}', false);
+                    console.log(data);
+                });
+            });
+    function checkDates() {
+            if (fechaIni.value && fechaFin.value) {
+                btnEnviar.disabled = false;
+            } else {
+                btnEnviar.disabled = true;
+            }
+        }
+    function cargar(){
+        var footer = document.getElementById('footer')
+        footer.style.display = 'none';
+        var ddtt = document.getElementById('btnAgregar')
+        ddtt.disabled=true
+        ddtt.textContent = 'Enviando Datos'
+
+    }
+    function actualizarFechaHora() {
+        var fechaHoraActual = new Date();
+        // Formatear la fecha y hora
+        var year = fechaHoraActual.getFullYear();
+        var month = String(fechaHoraActual.getMonth() + 1).padStart(2, '0'); // Sumar 1 al mes (los meses comienzan en 0)
+        var day = String(fechaHoraActual.getDate()).padStart(2, '0');
+        var hours = String(fechaHoraActual.getHours()).padStart(2, '0');
+        var minutes = String(fechaHoraActual.getMinutes()).padStart(2, '0');
+        var seconds = String(fechaHoraActual.getSeconds()).padStart(2, '0');
+
+        var fechaHoraFormateada = year + '-' + month + '-' + day + ' ' + hours + ':' + minutes + ':' + seconds;
+
+        // Actualizar la página con la fecha y hora formateada
+        document.getElementById('fecha').value = fechaHoraFormateada;
+        //console.log(fechaHoraFormateada)
+    }
+
+    // Llamar a la función inicialmente para mostrar la hora actual
+    actualizarFechaHora();
+
+    // Actualizar la fecha y la hora cada segundo (1000 milisegundos)
+    setInterval(actualizarFechaHora, 1000);
+
+
+
+    // Selecciona el checkbox y el div
+    const checkbox = document.getElementById("5anios");
+    const divFechas = document.getElementById("fechas");
+    var fechaIni = document.getElementById("fechaIni")
+    var fechaFin = document.getElementById("fechaFin")
+
+    var { fechaActual, fechaAnterior } = obtenerFechas();
+    fechaIni.min = fechaAnterior
+    fechaIni.max = fechaActual
+
+    fechaFin.min = fechaAnterior
+    fechaFin.max = fechaActual
+
+    // Agrega un evento de cambio al checkbox
+    checkbox.addEventListener("change", function () {
+        var { fechaActual, fechaAnterior } = obtenerFechas();
+        // Si el checkbox está marcado, muestra el div, de lo contrario, ocúltalo
+        if (checkbox.checked) {
+            divFechas.style.display = "none";
+            fechaIni.value = fechaAnterior
+            fechaFin.value = fechaActual
+        } else {
+            divFechas.style.display = "";
+            fechaIni.value = ''
+            fechaFin.value = ''
+        }
+    });
+    function obtenerFechas() {
+        const fecha = new Date();
+        const dia = String(fecha.getDate()).padStart(2, '0');
+        const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+        const anio = fecha.getFullYear();
+
+        const fechaActual = `${anio}-${mes}-${dia}`;
+
+        const anioAnterior = anio - 5;
+        const fechaAnterior = `${anioAnterior}-${mes}-${dia}`;
+
+        return { fechaActual, fechaAnterior };
+    }
+    const btnEnviar = document.getElementById("btnEnviar");
+    const mensaje = document.getElementById("mensaje");
+    let campoCounter = 0;
+
+    function actualOption() {
+        const opcionSeleccionada = document.getElementById("selectTipo").value;
+        document.getElementById("opcionSeleccionada").value = opcionSeleccionada;
+    }
+    actualOption()
+    // Actualizar el campo oculto con la opción seleccionada
+    document.getElementById("selectTipo").addEventListener("change", function () {
+        actualOption()
+        document.getElementById('agregarVariosContainer').innerHTML=''
+        document.getElementById('btnEnviar').disabled = true
+    });
+
+    function actualizarBotonEnviar() {
+        const campos = document.querySelectorAll("#camposDinamicos input");
+        const alMenosUnoLlenado = Array.from(campos).some(campo => campo.value.trim() !== "");
+
+        btnEnviar.disabled = !alMenosUnoLlenado;
+
+        if (!alMenosUnoLlenado) {
+            mensaje.textContent = "Por favor, ingrese datos primero.";
+        } else {
+            mensaje.textContent = "";
+        }
+    }
+
+    function crearCampo() {
+        document.getElementById('agregarVariosContainer').innerHTML =''
+        const tipoSeleccionado = document.getElementById("selectTipo").value;
+        const nuevoCampo = document.createElement("div");
+        nuevoCampo.className = "d-flex align-items-start mt-3"; // Contenedor para el campo de entrada y el botón de eliminar
+
+        // Agregar el campo de entrada
+        if (tipoSeleccionado === "nombre_ci") {
+            
+        }
+        const inputCampo = document.createElement("input");
+        const nombreCampo = `campo_${campoCounter++}`; // Nombre único
+        inputCampo.required = true; // Agregar el atributo required
+        inputCampo.type = (tipoSeleccionado === "telefono" || tipoSeleccionado === "imei") ? "number" : "text";
+        inputCampo.className = "form-control"; // Agregar clase de Bootstrap
+        inputCampo.name = nombreCampo; // Asignar un nombre único
+        inputCampo.placeholder = "Ingrese el Dato";
+        inputCampo.addEventListener("input", function () {
+            const valor = inputCampo.value.toUpperCase();
+            if (tipoSeleccionado === "nombre") {
+                inputCampo.value = valor.replace(/[^A-ZÑ.\s]+/g, '');
+
+            } else if ((tipoSeleccionado === "telefono" || tipoSeleccionado === "imei")) {
+                inputCampo.value = valor.replace(/[^0-9]+/g, '');
+            }
+            if(tipoSeleccionado === 'ci'){
+                inputCampo.value = inputCampo.value.replace(/\s+/g, '')
+            }
+            actualizarBotonEnviar();
+        });
+
+        // Agregar botón para eliminar el campo
+        const eliminarBoton = document.createElement("button");
+        eliminarBoton.type = "button";
+        eliminarBoton.className = "btn btn-outline mt-0 text-danger pl-2";
+        eliminarBoton.textContent = "x";
+        eliminarBoton.addEventListener("click", function () {
+            nuevoCampo.remove();
+            actualizarBotonEnviar();
+        });
+
+        // Agregar los elementos al nuevoCampo
+        nuevoCampo.appendChild(inputCampo);
+        nuevoCampo.appendChild(eliminarBoton);
+
+        document.getElementById("camposDinamicos").appendChild(nuevoCampo);
+        actualizarBotonEnviar();
+    }
+
+    function limpiarCampos() {
+        document.getElementById("camposDinamicos").innerHTML = '';
+        actualizarBotonEnviar();
+    }
+
+    document.getElementById("btnAgregar").addEventListener("click", crearCampo);
+    document.getElementById("selectTipo").addEventListener("change", limpiarCampos);
+    
+
+    function validarTextarea(){
+        let tesd = document.getElementById('datosMultiples')
+        tesd.value = tesd.value.toUpperCase();
+        let tipo = document.getElementById('selectTipo').value
+        console.log(tipo)
+        if(tipo == 'telefono' || tipo == 'imei'){
+
+            tesd.value = tesd.value.replace(/[^0-9,]/g, '');
+        }
+        if(tesd.value.length > 0){
+        document.getElementById('btnEnviar').disabled = false
+        }else{
+
+        document.getElementById('btnEnviar').disabled = true
+        }
+    }
+
+</script>

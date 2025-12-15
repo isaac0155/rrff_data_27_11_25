@@ -1,0 +1,107 @@
+.loader {
+    width: 36px;
+    height: 36px;
+    border: 3px dotted #009721;
+    border-style: solid solid dotted dotted;
+    border-radius: 50%;
+    display: inline-block;
+    position: relative;
+    box-sizing: border-box;
+    animation: rotation 2s linear infinite;
+}
+
+.loader::after {
+    content: '';
+    box-sizing: border-box;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    margin: auto;
+    border: 2px dotted #a0b100;
+    border-style: solid solid dotted;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    animation: rotationBack 1s linear infinite;
+    transform-origin: center center;
+}
+
+@keyframes rotation {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes rotationBack {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(-360deg);
+    }
+}
+.form-group{
+    margin-top: 10px;
+}
+
+body{
+    background: #f3f3f3;
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.9rem;
+    /* font-family: 'sans-serif'; */
+}
+.colorNav{
+    background: rgb(92, 52, 158);
+    color: rgb(0, 88, 75);
+}
+.todoContenido{
+    width: 100%;
+    height: 100%;
+    overflow-x: hidden;
+    overflow-y: scroll;
+}
+
+.fondo-negrito{
+    background-color: #000000d0;
+}
+
+.index{
+    width: 100%;
+    height: 100vh;
+}
+.masthead{
+    color: white;
+    min-height: 30rem;
+    width: 100%;
+    height: 100%;
+    padding-top: 8rem;
+    background: url('/img/background.jpg');
+    background-position: center center;
+    background-repeat: no-repeat;
+    background-size: cover;
+}
+.masthead h1{
+    font-size: 5rem;
+    margin: 0;
+    padding: 0;
+}
+
+@media (min-width: 992px){
+    .masthead h1{
+        font-size: 5.5rem;
+    }
+}
+.bg-viva{
+    background: rgb(255, 255, 255);
+}
+.bg-22{
+    background: rgb(223, 255, 193);
+}
+/*  */

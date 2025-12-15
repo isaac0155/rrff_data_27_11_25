@@ -1,0 +1,95 @@
+<div class="container p-4 bg-white">
+    <div class="text-center mb-3">
+        <h3>Panel de Control - {{user.ad}}</h3>
+    </div>
+    <div class="row">
+        <div class="col-md-4 mb-3 ">
+            <div class="card text-center border-success">
+                {{!-- <img src="/img/ci.png" class="card-img-top p-3" alt="..."> --}}
+                <div class="card-body">
+                    <h5 class="card-title">Gestion de ROLES</h5>
+                    <p class="card-text">Gestion de los Roles registrados en el Sitema.</p>
+                    <a href="/links/panel/roles" class="btn btn-success">Entrar</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3 ">
+            <div class="card text-center border-success">
+                {{!-- <img src="/img/centroSalud.png" class="card-img-top p-3" alt="..."> --}}
+                <div class="card-body">
+                    <h5 class="card-title">Crear Nuevo Usuario</h5>
+                    <p class="card-text">Registrar nuevo usuario en el sistema.</p>
+                    <a href="/links/panel/newuser" class="btn btn-success">Entrar</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3 ">
+            <div class="card text-center border-success">
+                {{!-- <img src="/img/ambulancia.png" class="card-img-top p-3" alt="..."> --}}
+                <div class="card-body">
+                    <h5 class="card-title">Ver Usuarios</h5>
+                    <p class="card-text">Gestion de datos, busqueda, historiales.</p>
+                    <a href="/links/panel/verusuarios" class="btn btn-success">Entrar</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3 ">
+            <div class="card text-center border-success bg-warning">
+                {{!-- <img src="/img/ci.png" class="card-img-top p-3" alt="..."> --}}
+                <div class="card-body">
+                    <h5 class="card-title">Solicitudes</h5>
+                    <p class="card-text">Opciones para las Solicitudes en el sistema.</p>
+                    <a id="btnHistorial" class="btn btn-success">Historial</a>
+
+                    <a href="/links/manage/pdf" class="btn btn-dark">Gestion PDFs</a>
+                    <!--<a class="btn btn-warning" href="/links/grafica/all">Grafico Estadistico</a><br> -->
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3 ">
+            <div class="card text-center border-success">
+                {{!-- <img src="/img/ci.png" class="card-img-top p-3" alt="..."> --}}
+                <div class="card-body">
+                    <h5 class="card-title">Historial de RRFF</h5>
+                    <p class="card-text">Detalle del historico generado en el sistema de RRFF.</p>
+                    <a href="/links/panel/historial/sistem" class="btn btn-success">Entrar</a>
+                    <!--<a class="btn btn-warning" href="/links/grafica/all">Grafico Estadistico</a><br> -->
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3 ">
+            <div class="card text-center border-success">
+                {{!-- <img src="/img/ci.png" class="card-img-top p-3" alt="..."> --}}
+                <div class="card-body">
+                    <h5 class="card-title">Historial de Detalle de Llamadas</h5>
+                    <p class="card-text">Detalle del historico generado en el sistema de Detalle de Llamadas.</p>
+                    <a href="/links/panel/historialdetallellamadas/sistem" class="btn btn-success">Entrar</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3 ">
+            <div class="card text-center border-danger">
+                {{!-- <img src="/img/ci.png" class="card-img-top p-3" alt="..."> --}}
+                <div class="card-body">
+                    <h5 class="card-title">Restaurar Base de Datos</h5>
+                    <p class="card-text">Restaura el sistema a una version anterior.</p>
+                    <a href="/links/panel/sistema/restaurar" class="btn btn-danger">Entrar</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const hoy = new Date();
+        const hace5dias = new Date();
+        hace5dias.setDate(hoy.getDate() - 5);
+
+        const formato = d => d.toISOString().split('T')[0]; // YYYY-MM-DD
+        const fini = formato(hace5dias);
+        const ffin = formato(hoy);
+
+        const link = `/links/panel/historial/solicitudes/system/${fini}/${ffin}`;
+        document.getElementById('btnHistorial').href = link;
+    });
+</script>

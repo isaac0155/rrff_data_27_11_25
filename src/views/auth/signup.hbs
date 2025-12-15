@@ -1,0 +1,117 @@
+<div class="container p-4 bg-white">
+    <div class="row">
+        <div class="col-md-4 mx-auto">
+            
+            <div class="card-header text-center">
+                <div class="container">
+            </div>
+                <img src="/img/follow.png" alt="logo" class="img mx-auto" width="70px" height="70px">
+                <h3>Registrar Nuevo Usuario</h3>
+                <p class="text-danger">La contraseña será la misma que el AD.</p>
+            </div>
+            <div class="card-body pt-4">
+                <form action="/links/panel/newuser" method="post">
+                    <div class="form-group">
+                        <label for="" class="form-label">Nombre AD</label>
+                        <input type="text" name="username" id="username" placeholder="Nombre AD" class="form-control" autofocus required>
+                        <div class="invalid-feedback" id="invalid">
+                        </div>
+                        <div class="valid-feedback">
+                            Este nombre de AD está libre.
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="" class="form-label">Rol Usuario</label>
+                        <select class="form-select" name="rol" aria-label="Default select example" required>
+                            <option selected value="">Selecciona una opción</option>
+                            {{#each tipo}}
+                            <option value="{{idRol}}">{{nombreRol}}</option>
+                            {{else}}
+                            <option value="">No hay Roles Registrados</option>
+                            {{/each}}
+                        </select>
+                    </div>
+                   <div class="form-group">
+                    <label for="" class="form-label">Estado</label>
+                    <div class="form-check">
+                        <input class="form-check-input " type="checkbox" name="activo" id="ch" checked>
+                        <label class="form-check-label text-success" id="lb" for="flexRadioDefault1">
+                            Activo
+                        </label>
+                    </div>
+                   </div>
+                <input type="text" name="fecha" id="fecha" style="display: none;">
+                    <div class="form-group d-grid gap-2" >
+                        <button class="btn btn-success btn-blok" id="btn" disabled>Registrar nuevo usuario</button>
+                    </div>
+
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    const checkbox = document.getElementById('ch');
+        const paragraph = document.getElementById('lb');
+        checkbox.addEventListener('change', function () {
+            // Verifica el estado del checkbox
+            if (checkbox.checked) {
+                // Si está marcado, cambia el texto del párrafo
+                paragraph.className = 'form-check-label text-success';
+                paragraph.textContent = "Activo";
+            } else {
+                // Si no está marcado, restaura el texto original
+                paragraph.className = 'form-check-label text-danger';
+                paragraph.textContent = "Bloqueado";
+            }
+        });
+
+    const input = document.getElementById('username');
+    const invalid = document.querySelector('#invalid');
+    input.addEventListener('input', () => {
+        const value = input.value;
+        if (value.length > 4) {
+            socket.emit('cliente:verifUser', value.trim());
+        } else {
+            invalid.innerHTML = "Crea un AD de 5 o más caracteres.";
+            input.className = 'form-control is-invalid';
+            btn.disabled = true;
+        }
+    });
+
+    socket.on('server:usuarioUsado', () => {
+        invalid.innerHTML = "Este AD ya EXISTE, usa otro.";
+        input.className = 'form-control is-invalid';
+        btn.disabled = true;
+    });
+
+    socket.on('server:usuarioLibre', () => {
+        input.className = 'form-control is-valid';
+        btn.disabled = false;
+    });
+    function actualizarFechaHora() {
+            var fechaHoraActual = new Date();
+
+            // Formatear la fecha y hora
+            var year = fechaHoraActual.getFullYear();
+            var month = String(fechaHoraActual.getMonth() + 1).padStart(2, '0'); // Sumar 1 al mes (los meses comienzan en 0)
+            var day = String(fechaHoraActual.getDate()).padStart(2, '0');
+            var hours = String(fechaHoraActual.getHours()).padStart(2, '0');
+            var minutes = String(fechaHoraActual.getMinutes()).padStart(2, '0');
+            var seconds = String(fechaHoraActual.getSeconds()).padStart(2, '0');
+
+            var fechaHoraFormateada = year + '-' + month + '-' + day + ' ' + hours + ':' + minutes + ':' + seconds;
+
+            // Actualizar la página con la fecha y hora formateada
+            document.getElementById('fecha').value = fechaHoraFormateada;
+            //console.log(fechaHoraFormateada)
+        }
+
+        // Llamar a la función inicialmente para mostrar la hora actual
+        actualizarFechaHora();
+
+        // Actualizar la fecha y la hora cada segundo (1000 milisegundos)
+        setInterval(actualizarFechaHora, 1000);
+</script>
+

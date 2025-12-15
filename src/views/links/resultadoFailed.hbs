@@ -1,0 +1,110 @@
+<div class="container p-4 bg-white mx-auto">
+    <div class="col-md-4 mx-auto">
+        <div class="text-center p-3 align-items-center">
+            <h4>Resultado de {{res.nombre}}</h4>
+            <h5><strong>Status</strong>: <span class="text-danger">{{res.estado_proceso}}</span></h5>
+        </div>
+        <table class="table table-sm table-hover">
+            {{#if user}}
+        
+            <tr>
+                <td style="font-weight: bold; width: 200px;">Ticket:</td>
+                <td>{{res.pm}}</td>
+            </tr>
+            {{/if}}
+            <tr>
+                <td style="font-weight: bold; width: 200px;">Requerimiento Fiscal:</td>
+                <td>{{res.nombre}}</td>
+            </tr>
+            <tr>
+                <td style="font-weight: bold; width: 200px;">Responsable:</td>
+                <td>{{res.ad}}</td>
+            </tr>
+            <tr>
+                <td style="font-weight: bold; width: 200px;">IP</td>
+                <td>{{res.ip}}</td>
+            </tr>
+            <tr>
+                <td style="font-weight: bold; width: 200px;">Fecha de solicitud:</td>
+                <td>{{res.fecha}}</td>
+            </tr>
+        
+        </table>
+        <div class="row">
+            <div id="data"></div>
+        </div>
+        {{#if res.resultado}}
+        <div class="mx-auto">
+            <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
+                Ya se hizo una solicitud nueva para este RRFF. <br>
+                <a href="/links/requerimientoFiscal/resultado/RF_{{res.resultado}}">Click aquí para ver la solicitud Nueva</a>
+            </div>
+        </div>
+        {{else}}
+        <button class="btn btn-warning" onclick="reloadRRFF({{res.idHistorialConsulta}})" style="display: none;">Volver a Consultar el RRFF</button>
+        {{/if}}
+    </div>
+</div>
+<script>
+    let data = (JSON.parse('{{{res.body}}}'))
+    function createHtmlFromObject(obj) {
+        let htmlContent = '';
+
+        function processObject(obj, indent = 0) {
+            const indentStyle = `style="margin-left: ${indent}px;"`;
+
+            for (let key in obj) {
+                if (obj.hasOwnProperty(key)) {
+                    const value = obj[key];
+
+                    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+                        htmlContent += `<div ${indentStyle}><strong>${key}:</strong></div>`;
+                        processObject(value, indent + 20);
+                    } else if (Array.isArray(value)) {
+                        htmlContent += `<div ${indentStyle}><strong>${key}:</strong> </div>`;
+                        value.forEach((item, index) => {
+                            htmlContent += `<div ${indentStyle} style="margin-left: ${indent + 20}px;">${index}: ${typeof item === 'object' ? '' : item}</div>`;
+                            if (typeof item === 'object') {
+                                processObject(item, indent + 40);
+                            }
+                        });
+                        htmlContent += `<div ${indentStyle}]</div>`;
+                    } else {
+                        const displayValue = value !== '' ? value : '""';
+                        htmlContent += `<div ${indentStyle}><strong>${key}:</strong> ${displayValue}</div>`;
+                    }
+                }
+            }
+        }
+
+        processObject(obj);
+
+        document.getElementById('data').innerHTML = htmlContent;
+    }
+
+    // Ejemplo de uso
+    const exampleObject = {
+        opcionSeleccionada: "telefono",
+        campo: ["65380266"],
+        pm: "0155",
+        "5anios": "",
+        fechaIni: "2019-08-12",
+        fechaFin: "2024-08-12",
+        datostitular: "",
+        fecha: "2024-08-12 11:38:00"
+    };
+
+    createHtmlFromObject(data);
+
+</script>
+<script>
+    function reloadRRFF(id){
+        if(confirm('¿Solicitar de nuevo un resultad? Esta acción solo se peude hacer 1 vez.')){
+            console.log(data)
+            socket.emit('cliente:solicitudRRFF', data, {{user.idPersona}}, '{{dataip}}', id);
+        }
+    }
+    socket.on('server:solicitudRRFF', (id) => {
+        window.location.href = "/links/requerimientoFiscal/resultado/RF_" + id;
+    });
+</script>

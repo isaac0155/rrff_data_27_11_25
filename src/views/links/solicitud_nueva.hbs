@@ -1,0 +1,729 @@
+<div class="container p-4" style="background: rgb(235, 255, 219);">
+    <div class="text-center p-3 mb-4">
+        <h2><i class="bi bi-file-earmark-text-fill"></i> FORMULARIO DE SOLICITUD DE INFORMACIÓN RRFF/JJOO</h2>
+        <hr>
+    </div>
+
+    <!-- Sección de Solicitud -->
+    <div class="row mb-3 border p-3 bg-viva rounded border-2">
+        <h4><i class="bi bi-journal-text"></i> Solicitud</h4>
+        <div class="col-md-4">
+            <label class="fw-bold"><i class="bi bi-list-check"></i> Tipo de solicitud</label>
+            <select class="form-control" id="solicitud_type" required>
+                <option value="">Seleccione una opción</option>
+                {{#each solicitud_type}}
+                <option value="{{name}}">{{name_show}}</option>
+                {{/each}}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="fw-bold"><i class="bi bi-calendar-event"></i> Rango Inicio</label>
+            <input type="date" class="form-control" id="fechaIni" name="fechaIni" required
+                placeholder="Seleccione la fecha de inicio">
+        </div>
+        <div class="col-md-4">
+            <label class="fw-bold"><i class="bi bi-calendar-event-fill"></i> Rango Fin</label>
+            <input type="date" class="form-control" id="fechaFin" name="fechaFin" required
+                placeholder="Seleccione la fecha de fin">
+        </div>
+    </div>
+
+    <!-- Sección de Solicitante -->
+    <div class="row mb-3 border p-3 bg-viva rounded border-2">
+        <h4><i class="bi bi-person-badge"></i> Solicitante</h4>
+        <div class="col-md-3">
+            <label class="fw-bold"><i class="bi bi-calendar-check"></i> Fecha</label>
+            <input type="date" class="form-control" id="fecha" name="fecha">
+        </div>
+        <div class="col-md-3">
+            <label class="fw-bold"><i class="bi bi-map"></i> Departamento</label>
+            <select class="form-control" id="departamento" name="departamento" required>
+                <option value="">Seleccione un departamento</option>
+                <option value="Santa Cruz">Santa Cruz</option>
+                <option value="La Paz">La Paz</option>
+                <option value="Cochabamba">Cochabamba</option>
+                <option value="Oruro">Oruro</option>
+                <option value="Tarija">Tarija</option>
+                <option value="Potosí">Potosí</option>
+                <option value="Chuquisaca">Chuquisaca</option>
+                <option value="Beni">Beni</option>
+                <option value="Pando">Pando</option>
+            </select>
+        </div>
+
+        <div class="col-md-3">
+            <label class="fw-bold"><i class="bi bi-file-earmark-text"></i> CITE</label>
+            <input type="text" class="form-control" id="cite" name="cite" placeholder="Ingrese el CITE" maxlength="15" max="15">
+            <label for="cite" class="text-danger">15 caracteres máximo</label>
+        </div>
+        <div class="col-md-3">
+            <label class="fw-bold"><i class="bi bi-file-earmark-richtext"></i> COCITE</label>
+            <input type="text" class="form-control" id="cocite" name="cocite" placeholder="Ingrese el COCITE" maxlength="20" max="20">
+            <label for="cocite" class="text-danger">20 caracteres máximo</label>
+        </div>
+        <div class="col-md-6 mt-3">
+            <label class="fw-bold"><i class="bi bi-person-circle"></i> Solicitante</label>
+            <input type="text" class="form-control" id="solicitante" name="solicitante"
+                placeholder="Nombre del solicitante" maxlength="100" max="100">
+            <label for="solicitante" class="text-danger">100 caracteres máximo</label>
+        </div>
+        <div class="col-md-6 mt-3">
+            <label class="fw-bold"><i class="bi bi-briefcase"></i> Cargo del solicitante</label>
+            <input type="text" class="form-control" id="cargo_solicitante" name="cargo_solicitante"
+                placeholder="Cargo del solicitante">
+        </div>
+    </div>
+
+    <!-- Sección de Parámetros de Búsqueda -->
+    <div class="row mb-3 border p-3 bg-viva rounded border-2">
+        <h4><i class="bi bi-search"></i> Parámetros de Búsqueda</h4>
+        <div class="col-md-6">
+            <label class="fw-bold"><i class="bi bi-funnel"></i> Buscar por</label>
+            <select class="form-control mb-2" id="tipoBusqueda">
+                <option value="telefono">Teléfono</option>
+                <option value="ci">CI</option>
+                <option value="nombre">Nombre</option>
+                <option value="imei">IMEI</option>
+            </select>
+            <button class="btn btn-secondary btn-sm w-100" style="margin-top: 0px;" id="btnAgregarParametro">
+                <i class="bi bi-plus-lg"></i> Añadir
+            </button>
+            <div id="validar_datos_dinamicos"></div>
+            <div id="camposDinamicos" class="mt-2"></div>
+        </div>
+
+        <!-- Sección de Información -->
+        <div class="col-md-6">
+            <label class="fw-bold"><i class="bi bi-info-circle"></i> Información</label><br>
+            <label class="">Seleccione las opciones de búsqueda.</label>
+            <div class="border p-2 bg-white mt-3">
+
+                <!-- Grupo: Suscriptor -->
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" data-exclusive-with="suscriptor" id="NOM">
+                            <label class="form-check-label" for="NOM"><i class="bi bi-person-lines-fill"></i> Información del Suscriptor</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" data-exclusive-with="suscriptor" id="DIR">
+                            <label class="form-check-label" for="DIR"><i class="bi bi-person-lines-fill"></i> + Domicilio</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" data-exclusive-with="suscriptor" id="REF">
+                            <label class="form-check-label" for="REF"><i class="bi bi-person-lines-fill"></i> + Contactos de referencia</label>
+                        </div>
+                    </div>
+                </div>
+
+                <hr>
+
+                <!-- Independientes -->
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="S">
+                    <label class="form-check-label" for="S"><i class="bi bi-phone"></i> IMEI asociado al Suscriptor</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="RECARGAS">
+                    <label class="form-check-label" for="RECARGAS"><i class="bi bi-cash-stack"></i> Detalle de recargas de crédito</label>
+                </div>
+
+                <hr>
+
+                <!-- Grupo: Detalles técnicos -->
+                <div class="row">
+                    <div class="col-md-6">
+                        <div style="">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="LLA">
+                                <label class="form-check-label" for="LLA"><i class="bi bi-telephone"></i> Detalle de llamadas</label>
+                            </div>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="SMS">
+                            <label class="form-check-label" for="SMS"><i class="bi bi-chat-dots"></i> Detalle de tráfico de SMS</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="CEL">
+                            <label class="form-check-label" for="CEL"><i class="bi bi-broadcast"></i> + Radio bases</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="IMEI">
+                            <label class="form-check-label" for="IMEI"><i class="bi bi-phone"></i> + IMEI</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="NOM_VIVA">
+                            <label class="form-check-label" for="NOM_VIVA"><i class="bi bi-people"></i> + Detalle de suscriptores de Viva</label>
+                        </div>
+                    </div>
+                </div>
+                <hr>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div style="">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="DATOS">
+                                <label class="form-check-label" for="DATOS"><i class="bi bi-wifi"></i> Tráfico de datos GSM</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="CEL_DATOS">
+                            <label class="form-check-label" for="CEL_DATOS"><i class="bi bi-broadcast"></i> + Radio bases GSM</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Botón de Generar Información -->
+    <div class="text-center w-100">
+        <button class="btn btn-success w-50" id="btnGenerar">
+            <i class="bi bi-gear-wide-connected"></i> Generar información
+        </button>
+    </div>
+</div>
+
+<script>
+    // Exclusividad por grupo
+    document.querySelectorAll('input[type="checkbox"][data-grupo]').forEach(input => {
+        input.addEventListener('change', () => {
+            const grupo = input.dataset.grupo;
+            if (input.checked) {
+                document.querySelectorAll(`input[type="checkbox"][data-grupo="${grupo}"]`).forEach(cb => {
+                    if (cb !== input) cb.checked = false;
+                });
+            }
+        });
+    });
+
+    // Exclusividad por par
+    document.querySelectorAll('input[type="checkbox"][data-exclusive-with]').forEach(input => {
+        input.addEventListener('change', () => {
+            const targetId = input.getAttribute('data-exclusive-with');
+            const target = document.getElementById(targetId);
+            if (input.checked && target) {
+                target.checked = false;
+            }
+        });
+    });
+
+    // Dependencia condicional: activar dependientes si alguno de los habilitadores está activo
+    function actualizarDependientes(habilitadores, dependientes) {
+        const algunoSeleccionado = habilitadores.some(id => document.getElementById(id).checked);
+        dependientes.forEach(id => {
+            const checkbox = document.getElementById(id);
+            checkbox.disabled = !algunoSeleccionado;
+            if (!algunoSeleccionado) {
+                checkbox.checked = false;
+            }
+        });
+    }
+
+    const habilitadores1 = ['LLA', 'SMS'];
+    const dependientes1 = ['CEL', 'IMEI', 'NOM_VIVA'];
+    const habilitadores2 = ['NOM'];
+    const dependientes2 = ['DIR', 'REF'];
+    const habilitadores3 = ['DATOS'];
+    const dependientes3 = ['CEL_DATOS'];
+
+    // Función de wrapper para mantener independencia
+    function bindDependencia(habilitadores, dependientes) {
+        // Inicializar
+        actualizarDependientes(habilitadores, dependientes);
+        // Escuchar cambios
+        habilitadores.forEach(id => {
+            const checkbox = document.getElementById(id);
+            if (checkbox) {
+                checkbox.addEventListener('change', () => {
+                    actualizarDependientes(habilitadores, dependientes);
+                });
+            }
+        });
+    }
+
+    bindDependencia(habilitadores1, dependientes1);
+    bindDependencia(habilitadores2, dependientes2);
+    bindDependencia(habilitadores3, dependientes3);
+
+    // Añadir listeners a los habilitadores
+    /*habilitadores.forEach(id => {
+        document.getElementById(id).addEventListener('change', actualizarDependientes);
+    });*/
+</script>
+<script>
+    let estadoDinamicos = {}; // 📌 Guarda el estado de cada campo dinámico
+    let message_dinamicos = false; // 📌 Estado general de validación
+
+    // Límite de fechas (máximo 5 años atrás)
+    document.addEventListener("DOMContentLoaded", function () {
+        let fechaIni = document.getElementById("fechaIni");
+        let fechaFin = document.getElementById("fechaFin");
+
+        let hoy = new Date();
+        let maxInicio = new Date();
+        maxInicio.setFullYear(hoy.getFullYear() - 5);
+
+        let minFecha = maxInicio.toISOString().split("T")[0];
+        let maxFecha = hoy.toISOString().split("T")[0];
+
+        fechaIni.min = minFecha;
+        fechaIni.max = maxFecha;
+
+        fechaFin.min = minFecha;
+        fechaFin.max = maxFecha;
+
+        fechaIni.addEventListener("change", function () {
+            // Ya no limitamos fechaFin a +1 año, solo la sincronizamos para no ser anterior a fechaIni
+            fechaFin.min = fechaIni.value;
+        });
+    });
+
+    // Manejo de parámetros de búsqueda con validador flotante
+    document.getElementById("btnAgregarParametro").addEventListener("click", function () {
+        let tipo = document.getElementById("tipoBusqueda").value;
+        if (!tipo) return;
+
+        let div = document.createElement("div");
+        div.className = "d-flex align-items-center mt-1 mb-3 position-relative w-100"; // Contenedor para input y validador
+
+        // Crear contenedor de Bootstrap Input Group
+        let inputGroup = document.createElement("div");
+        inputGroup.className = "input-group input-group-sm mb-3";
+
+        // Crear el span con el tipo de búsqueda
+        let span = document.createElement("span");
+        span.className = "input-group-text";
+        span.textContent = tipo.charAt(0).toUpperCase() + tipo.slice(1); // Capitaliza el nombre del tipo
+
+        // Crear el input
+        let input = document.createElement("input");
+        input.type = "text";
+        input.className = "form-control";
+        input.placeholder = `Ingrese ${tipo}`;
+        input.name = `parametro_${tipo}`;
+        input.id = `parametro_${tipo}_${Date.now()}`;
+        input.setAttribute("aria-label", `Ingrese ${tipo}`);
+        input.setAttribute("aria-describedby", "inputGroup-sizing-sm");
+
+        // Crear el validador flotante
+        let validador = document.createElement("div");
+        validador.className = "validador-flotante";
+        validador.style.cssText = `
+        position: absolute;
+        bottom: -15px;
+        left: 0%;
+        background: rgba(0, 0, 0, 0.8);
+        padding: 5px 10px;
+        border-radius: 5px;
+        font-size: 12px;
+        display: none;
+        color: #fff;
+        white-space: nowrap;
+        z-index: 1050;
+    `;
+
+        // Agregar evento de validación en tiempo real
+        input.addEventListener("input", function () {
+            validarCampo(input, validador);
+        });
+
+        // Botón de eliminar
+        let btnEliminar = document.createElement("button");
+        btnEliminar.className = "btn btn-danger btn-sm ms-2";
+        btnEliminar.textContent = "x";
+        btnEliminar.style.marginTop = '-15px';
+        btnEliminar.onclick = function () {
+            // 📌 Eliminar el estado de validación del input de la variable global
+            delete estadoDinamicos[input.id];
+
+            // 📌 Actualizar message_dinamicos para reflejar el nuevo estado global
+            message_dinamicos = Object.values(estadoDinamicos).every(status => status === true);
+
+            // 📌 Eliminar el input y su contenedor
+            div.remove();
+        };
+
+
+        // Ensamblar estructura
+        inputGroup.appendChild(span);
+        inputGroup.appendChild(input);
+
+        div.appendChild(inputGroup);
+        div.appendChild(btnEliminar);
+        div.appendChild(validador);
+
+        document.getElementById("camposDinamicos").appendChild(div);
+    });
+
+
+    // Función de validación del campo
+    // Función de validación del campo
+    function validarCampo(input, validador) {
+        let tipo = input.name.split("_")[1]; // Extrae el tipo de búsqueda
+        let valor = input.value; // No aplicar trim() aquí para permitir espacios en tiempo real
+
+        if (valor === "") {
+            validador.style.display = "none";
+            return;
+        }
+
+        let mensaje = "";
+        let valido = false;
+
+        switch (tipo) {
+            case "telefono":
+                // Solo números, entre 7 y 10 dígitos
+                valor = valor.replace(/[^0-9]/g, '');
+                input.value = valor;
+                valido = /^\d{7,10}$/.test(valor);
+                mensaje = valido ? "✅ Teléfono válido" : "⚠️ Debe tener entre 7 y 10 dígitos";
+                //console.log(input)
+                valido ? socket.emit('cliente:verificarData', { tipo: 'telefono', valor, id: input.id }) : null;
+                break;
+
+            case "ci":
+                // Letras, números y guiones, de 5 a 15 caracteres
+                valor = valor.toUpperCase().replace(/[^A-Z0-9-]/g, '');
+                input.value = valor;
+                valido = /^[A-Z0-9-]{5,15}$/.test(valor);
+                mensaje = valido ? "✅ CI válido" : "⚠️ Solo letras, números y guiones (5-15 caracteres)";
+                valido ? socket.emit('cliente:verificarData', { tipo: 'ci', valor, id: input.id }) : null;
+                break;
+
+            case "nombre":
+                // Permitir solo letras, puntos y espacios
+                valor = valor.toUpperCase().replace(/[^A-ZÑ.\s]/g, '');
+
+                // Evitar múltiples espacios consecutivos
+                valor = valor.replace(/\s{2,}/g, ' ');
+
+                // Asignar el valor al input sin eliminar espacios finales en tiempo real
+                input.value = valor;
+
+                // Validar que el texto tenga al menos 6 caracteres SIN aplicar trim() aquí
+                valido = valor.trim().length >= 6;
+
+                // Mensaje de validación
+                mensaje = valido ? "✅ Nombre válido" : "⚠️ Solo letras y mínimo 6 caracteres";
+
+                // Aplicar trim() solo cuando el usuario pierde el foco
+                input.addEventListener("blur", function () {
+                    input.value = input.value.trim(); // Limpiar espacios finales solo al salir del campo
+                });
+
+                valido ? socket.emit('cliente:verificarData', { tipo: 'nombre', valor, id: input.id }) : null;
+                break;
+
+            case "imei":
+                // Solo números, mínimo 10 dígitos
+                valor = valor.replace(/[^0-9]/g, '');
+                input.value = valor;
+                valido = /^\d{10,}$/.test(valor);
+                mensaje = valido ? "✅ Número válido" : "⚠️ Debe tener al menos 10 dígitos numéricos";
+                if (valido) socket.emit('cliente:verificarData', { tipo: 'imei', valor, id: input.id });
+                break;
+
+            default:
+                mensaje = "❓ Tipo no reconocido";
+        }
+        // 📌 Guardar el estado de cada input dinámico en un objeto global
+        estadoDinamicos[input.id] = valido;
+
+        // 📌 Verificar si TODOS los campos dinámicos son válidos
+        message_dinamicos = Object.values(estadoDinamicos).every(status => status === true);
+
+        // Mostrar el validador con estilos mejorados
+        validador.textContent = mensaje;
+        validador.style.backgroundColor = valido ? "rgba(0, 165, 60, 0.22)" : "rgba(255, 0, 0, 0.22)";
+        validador.style.color = "black";
+        validador.style.padding = "5px";
+        validador.style.borderRadius = "5px";
+        validador.style.display = "block";
+    }
+
+    let listaSugerenciasActiva = null;
+
+        socket.on('server:verificarData', ({ tipo, id, resultado }) => {
+            console.log(tipo, id, resultado);
+
+            let input = document.getElementById(id);
+            if (!input) return;
+
+            let contenedor = input.closest(".input-group");
+            let validadorId = `${id}_validador`;
+            let validadorMensaje = document.getElementById(validadorId);
+
+            if (!validadorMensaje) {
+                validadorMensaje = document.createElement("div");
+                validadorMensaje.className = "validador-mensaje";
+                validadorMensaje.id = validadorId;
+                validadorMensaje.style.cssText = `
+            position: absolute;
+            top: 70%;
+            right: 0%;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 5px 5px;
+            border-radius: 5px;
+            font-size: 12px;
+            color: black;
+            white-space: nowrap;
+            z-index: 1050;
+            display: none;
+        `;
+                contenedor.parentNode.appendChild(validadorMensaje);
+            }
+
+            // Si no hay resultados
+            if (!resultado || resultado.length === 0) {
+                validadorMensaje.textContent = "⚠️ No se encontraron coincidencias";
+                validadorMensaje.style.backgroundColor = "rgba(236, 255, 0, 0.29)";
+                validadorMensaje.style.display = "block";
+                if (listaSugerenciasActiva) listaSugerenciasActiva.remove();
+                return;
+            }
+
+            if (tipo === "telefono" || tipo === "imei") {
+                validadorMensaje.textContent = resultado ? "✅ " + tipo + " existe" : "⚠️ " + tipo + " no registrado";
+                validadorMensaje.style.backgroundColor = resultado ? "rgba(0, 165, 60, 0.22)" : "rgba(236, 255, 0, 0.29)";
+                validadorMensaje.style.display = "block";
+                if (listaSugerenciasActiva) listaSugerenciasActiva.remove();
+            } else if (tipo === "ci" || tipo === "nombre") {
+                if (input.value.trim() === "") {
+                    if (listaSugerenciasActiva) listaSugerenciasActiva.remove();
+                    return;
+                }
+
+                if (resultado.length > 1) {
+                    mostrarOpciones(input, resultado.slice(0, 5), tipo);
+                    validadorMensaje.style.display = "none";
+                } else {
+                    // Mostrar siempre la lista de coincidencias, incluso si es solo una
+                    mostrarOpciones(input, resultado.slice(0, 1), tipo);
+                    validadorMensaje.style.display = "none"; // No mostrar mensaje hasta que el usuario elija
+                }
+
+            }
+        });
+
+
+        /**
+         * 📌 Función para mostrar opciones flotantes de selección (ci y nombre)
+         */
+        function mostrarOpciones(input, opciones, tipo) {
+                if (listaSugerenciasActiva) limpiarSugerencias();
+
+                let lista = document.createElement("div");
+                lista.className = "lista-sugerencias";
+                lista.style.cssText = `
+        position: absolute;
+        background: white;
+        border: 1px solid #ccc;
+        padding: 5px;
+        width: ${input.offsetWidth}px;
+        z-index: 1000;
+        max-height: 150px;
+        overflow-y: auto;
+        border-radius: 5px;
+        box-shadow: 0px 4px 6px rgba(0,0,0,0.1);
+        font-size: 14px;
+        transition: background 0.2s ease;
+
+    `;
+
+                const rect = input.getBoundingClientRect();
+                lista.style.top = `${rect.bottom + window.scrollY}px`;
+                lista.style.left = `${rect.left + window.scrollX}px`;
+
+                opciones.forEach(opcion => {
+                    let item = document.createElement("div");
+                    item.textContent = opcion.FULL_NAME + ', ' + opcion.DOCUMENT_IDENTIFIER;
+                    item.style.padding = "8px";
+                    item.style.cursor = "pointer";
+                    item.style.borderBottom = "1px solid #eee";
+
+                    item.onmouseover = () => item.style.backgroundColor = "rgba(209, 246, 255, 1)";
+                    item.onmouseout = () => item.style.backgroundColor = "white";
+
+                    item.onclick = () => {
+                        input.value = tipo === 'ci' ? opcion.DOCUMENT_IDENTIFIER : opcion.FULL_NAME;
+                        input.dispatchEvent(new Event('input'));
+                        limpiarSugerencias();
+                    };
+
+                    lista.appendChild(item);
+                });
+
+                document.body.appendChild(lista);
+                listaSugerenciasActiva = lista;
+
+                // Guardar referencia del listener para poder quitarlo
+                cerrarListener = function (e) {
+                    if (!lista.contains(e.target) && e.target !== input) {
+                        limpiarSugerencias();
+                    }
+                };
+
+                setTimeout(() => {
+                    document.addEventListener("click", cerrarListener);
+                }, 0);
+            }
+
+            let cerrarListener = null;
+
+            function limpiarSugerencias() {
+                if (listaSugerenciasActiva) {
+                    listaSugerenciasActiva.remove();
+                    listaSugerenciasActiva = null;
+                }
+                if (cerrarListener) {
+                    document.removeEventListener("click", cerrarListener);
+                    cerrarListener = null;
+                }
+            }
+
+
+</script>
+<script>
+    function ver_dinamidos() {
+        let containe_mensaje = document.getElementById('validar_datos_dinamicos')
+        if (message_dinamicos) {
+            containe_mensaje.innerHTML = ``
+        } else {
+            containe_mensaje.innerHTML = `
+                    <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
+                    <strong>¡Error!</strong> Algunos campos no son válidos.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" style="margin-top:0px;" aria-label="Close"></button>
+                `
+        }
+    }
+    document.getElementById("btnGenerar").addEventListener("click", function () {
+        validarFormulario();
+    });
+
+    function validarFormulario() {
+        let errores = 0; // Contador de errores
+
+        // 📌 Eliminar mensajes de error previos
+        document.querySelectorAll(".mensaje-error").forEach(el => el.remove());
+
+        // 📌 Validar inputs y selects obligatorios
+        document.querySelectorAll("input[required], select[required], textarea[required]").forEach(input => {
+            if (!input.value.trim()) {
+                mostrarError(input, "⚠️ Campo obligatorio");
+                errores++;
+            }
+        });
+
+        // 📌 Validar que al menos un checkbox esté seleccionado
+        let checkboxes = document.querySelectorAll(".form-check-input");
+        let algunCheckSeleccionado = Array.from(checkboxes).some(checkbox => checkbox.checked);
+
+        if (!algunCheckSeleccionado) {
+            let checkboxContainer = document.querySelector(".form-check");
+            mostrarError(checkboxContainer, "⚠️ Debe seleccionar al menos una opción");
+            errores++;
+        }
+
+        // 📌 Validar campos adicionales (CITE, COCITE, Solicitante, Cargo)
+        let camposAdicionales = ["cite", "cocite", "solicitante", "cargo_solicitante", "fecha"];
+        camposAdicionales.forEach(id => {
+            let input = document.getElementById(id);
+            if (input && !input.value.trim()) {
+                mostrarError(input, "⚠️ Campo obligatorio");
+                errores++;
+            }
+        });
+
+        // 📌 Validar la sección de Parámetros de Búsqueda (debe existir al menos un campo dinámico)
+        let parametrosBusqueda = document.querySelectorAll("#camposDinamicos input");
+        if (parametrosBusqueda.length === 0) {
+            mostrarError(document.getElementById("tipoBusqueda"), "⚠️ Debe agregar al menos un parámetro de búsqueda");
+            errores++;
+        } else {
+            // 📌 Validar que los campos dinámicos de búsqueda no estén vacíos
+            parametrosBusqueda.forEach(input => {
+                if (!input.value.trim()) {
+                    mostrarError(input, "⚠️ Campo obligatorio");
+                    errores++;
+                }
+            });
+        }
+
+        // 📌 Si hay errores, detener el proceso
+        ver_dinamidos();
+        if (errores > 0 || !message_dinamicos) {
+            return;
+        }
+
+        // 📌 Si todo está validado, recolectar datos y enviarlos
+        procesarSolicitud();
+    }
+
+    // 📌 Función para mostrar un mensaje de error debajo del input
+    function mostrarError(elemento, mensaje) {
+        let errorMensaje = document.createElement("div");
+        errorMensaje.className = "mensaje-error";
+        errorMensaje.style.cssText = `
+                color: red;
+                font-size: 12px;
+                margin-top: 5px;
+                font-weight: bold;
+            `;
+        errorMensaje.textContent = mensaje;
+
+        // Insertar después del input
+        if (elemento.tagName === "INPUT" || elemento.tagName === "SELECT" || elemento.tagName === "TEXTAREA") {
+            elemento.insertAdjacentElement("afterend", errorMensaje);
+        } else {
+            elemento.closest("div").appendChild(errorMensaje);
+        }
+    }
+
+    // 📌 Función para enviar la solicitud si la validación es exitosa
+    function procesarSolicitud() {
+        let datosFormulario = {}; // Objeto para almacenar los datos del formulario
+
+        // 📌 Capturar valores de los inputs, selects y textareas
+        document.querySelectorAll("input, select, textarea").forEach(input => {
+            if (input.type === "checkbox") return; // Omitimos los checkboxes en esta parte
+            datosFormulario[input.id] = input.value.trim();
+        });
+
+        // 📌 Capturar los checkboxes ID seleccionados
+        datosFormulario["opcionesIDSeleccionadas"] = [];
+        document.querySelectorAll(".form-check-input:checked").forEach(checkbox => {
+            datosFormulario["opcionesIDSeleccionadas"].push(checkbox.id);
+        });
+        // 📌 Capturar los checkboxes NOMBRE seleccionados
+        datosFormulario["opcionesSeleccionadas"] = [];
+        document.querySelectorAll(".form-check-input:checked").forEach(checkbox => {
+            datosFormulario["opcionesSeleccionadas"].push(checkbox.nextElementSibling.textContent.trim());
+        });
+
+
+        // 📌 Capturar los parámetros de búsqueda dinámicos
+        datosFormulario["parametrosBusqueda"] = {};
+        document.querySelectorAll("#camposDinamicos input").forEach(input => {
+            datosFormulario["parametrosBusqueda"][input.name] = input.value.trim();
+        });
+
+        console.log("📌 Datos enviados al servidor:", datosFormulario);
+
+        // Aquí puedes hacer la petición al servidor con fetch o socket.emit
+        if (confirm('¿Está seguro de realizar la Solicitud?')) {
+            socket.emit('cliente:enviarData', datosFormulario, `{{user.ad}}`, '{{dataip}}', false)
+        }
+    }
+    socket.on('server:historialId', (id) => {
+        //reload page
+        location.reload();
+        window.location.href = "/links/requerimientoFiscal/respuesta/" + id; // Reemplaza con la URL de destino
+    })
+</script>

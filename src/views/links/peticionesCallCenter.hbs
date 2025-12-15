@@ -1,0 +1,109 @@
+<div class="container p-4 bg-white ">
+    <div class="text-center p-3 mb-4 align-items-center">
+        <h2>Detalle de Llamadas</h2>
+        <p class="text-danger">La información proporcionada por este sitio es confidencial, y se tiene los debidos
+            controles
+            para su correcta auditoría. <br> El mal uso de esta información cae en resposabilidad del usuario.</p>
+    </div>
+    <div class="">
+        <div class="row">
+            <div class="mx-auto">
+                <div class="card">
+                    <div class="card-body col-md-6 mx-auto">
+                        <form action="/links/detallellamadas" method="post" id="detallellamdasForm">
+                            <input type="hidden" name="idPersona" value="{{user.idPersona}}" id="">
+                            <input type="hidden" name="ip" value="{{ip}}" id="">
+                            <input type="hidden" name="ad" value="{{user.ad}}" id="">
+
+                            <div class="input-group form-control-sm mb-3">
+                                <span for="" class="input-group-text">ID Ticket respaldo</span>
+                                <input type="text" class="form-control form-control-sm" name="ticket"
+                                    placeholder="Identificador del ticket de respaldo" required>
+                            </div>
+                            <div class="input-group form-control-sm mb-3">
+                                <span for="" class="input-group-text">Numero de Teléfono a Consultar</span>
+                                <input type="text" class="form-control form-control-sm"
+                                    placeholder="Numero de telefono, ej: 6538..." name="telefono" required>
+                            </div>
+                            <div class="input-group form-control-sm mb-3">
+                                <span for="" class="input-group-text">Fecha Inicio</span>
+                                <input type="date" class="form-control form-control-sm" id="fechaIni" name="fechaIni"
+                                    required>
+                                <span for="" class="input-group-text">Fecha Fin</span>
+                                <input type="date" class="form-control form-control-sm" id="fechaFin" name="fechaFin"
+                                    required>
+                            </div>
+                            <div class="input-group form-control-sm mb-3">
+                                <span for="" class="input-group-text">Resultado</span>
+                                <select name="ofuscado" id="" class="form-control form-control-sm" required>
+                                    <option value="">Selecciona una Opción</option>
+                                    <option value="1">Resultado con Protección de datos de Terceros (OFUSCADO)</option>
+                                    <option value="0" class="text-danger">Resultado completo (SIN OFUSCADO)</option>
+                                </select>
+                            </div>
+                            <div id="btndll">
+                                <button class="btn btn-success btn-sm" id="btndll">CONSULTAR DATOS</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    var fechaIni = document.getElementById("fechaIni")
+    var fechaFin = document.getElementById("fechaFin")
+
+    var { fechaActual, fechaAnterior } = obtenerFechas();
+    fechaIni.min = fechaAnterior
+    fechaIni.max = fechaActual
+
+    fechaFin.min = fechaAnterior
+    fechaFin.max = fechaActual
+    function obtenerFechas() {
+        const fecha = new Date();
+        const dia = String(fecha.getDate()).padStart(2, '0');
+        const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+        const anio = fecha.getFullYear();
+
+        const fechaActual = `${anio}-${mes}-${dia}`;
+
+        const anioAnterior = anio - 5;
+        const fechaAnterior = `${anioAnterior}-${mes}-${dia}`;
+
+        return { fechaActual, fechaAnterior };
+    }
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.getElementById('detallellamdasForm');
+
+        form.addEventListener('submit', function (event) {
+            document.getElementById('btndll').innerHTML = `<button class="btn btn-warning" type="button" disabled>
+                <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                <span role="status">Enviando datos...</span>
+                </button>`
+            event.preventDefault();  // Detiene el envío del formulario
+
+            if (form.checkValidity()) {
+                const formData = new FormData(form);
+                const dataObject = {};
+
+                formData.forEach((value, key) => {
+                    dataObject[key] = value;
+                });
+                //dataObject.telefono = dataObject.telefono.split(',')
+                console.log(dataObject); // Imprime los datos del formulario en la consola
+                socket.emit('cleinte:newDetalleLlamadas', dataObject)
+            } else {
+                form.reportValidity();  // Muestra los mensajes de error de validación
+            }
+        });
+    });
+
+    socket.on('server:buscandodetallellamadas', (id)=>{
+        window.location.href = '/links/detallellamadas/resultado/'+id;
+
+    })
+
+</script>

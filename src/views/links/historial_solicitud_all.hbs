@@ -1,0 +1,123 @@
+<!-- Incluir jQuery -->
+<script src="https://code.jquery.com/jquery-3.5.1.js"></script>
+
+<!-- Incluir Popper.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+
+<!-- Incluir Bootstrap JS -->
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+<!-- Incluye Bootstrap Table JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.18.0/bootstrap-table.min.js"></script>
+
+<!-- Incluye Bootstrap Table CSS -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.18.0/bootstrap-table.min.css">
+
+<!-- Incluye la librería para exportar a Excel -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.2/xlsx.full.min.js"></script>
+
+<div class="container p-4 bg-white">
+    <div class="text-center p-3 mb-4 align-items-center">
+        <h3>Historial de Solicitudes de todos los usuarios</h3>
+    </div>
+
+    <div class="mb-3">
+        <button class="btn btn-success btn-sm" onclick="exportarTablaAExcel('historialTabla', 'Historial_Solicitudes')">
+            Exportar a Excel
+        </button>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover table-striped table-bordered table-sm" id="historialTabla">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Usuario</th>
+                    <th>CITE</th>
+                    <th>COCITE</th>
+                    <th>Categ.</th>
+                    <th>Tiempo de Solucion</th>
+                    <th>Estado</th>
+                    <th>Fecha Creado</th>
+                    <th>Acción</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each historial}}
+                <tr class="{{#equals estado 'error'}}table-danger{{/equals}}">
+                    <td>{{id_historial_respuesta_pdf}}</td>
+                    <td>{{user}}</td>
+                    <td>{{cite}}</td>
+                    <td>{{cocite}}</td>
+                    <td>{{tipo_solicitud}}</td>
+                    <td>{{tiempo_solucion}}</td>
+                    <td>
+                        {{#equals estado 'finalizado'}}
+                        <span class="text-success font-weight-bold">Finalizado</span>
+                        {{else}}
+            
+                        {{#equals estado 'pendiente'}}
+                        <span class="text-warning font-weight-bold">Pendiente</span>
+                        {{else}}
+                        <span class="text-danger font-weight-bold">Error</span>
+                        {{/equals}}
+                        {{/equals}}
+                        {{#equals estado 'en_proceso'}}
+                        <span class="text-warning font-weight-bold">En Proceso</span>
+                        {{/equals}}
+                    </td>
+                    <td>{{creado}}</td>
+                    <td>
+                        <a href="/links/requerimientoFiscal/respuesta/{{id_historial_respuesta_pdf}}" class="">Detalle</a>
+                    </td>
+                </tr>
+                {{else}}
+                <tr>
+                    <td colspan="16" class="text-center">No hay registros en el historial</td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    $(function () {
+        $('#historialTabla').bootstrapTable({
+            pagination: true,
+            sortable: true,
+            search: true
+        });
+    });
+
+    function exportarTablaAExcel(tableId, nombreArchivo = '') {
+        var datos = $('#' + tableId).bootstrapTable('getData');
+
+        var encabezados = [];
+        var hojaDatos = [];
+
+        // Obtener los encabezados de la tabla
+        $('#' + tableId).find('thead > tr:first > th').each(function () {
+            var encabezado = $(this).text().trim();
+            encabezados.push(encabezado);
+        });
+
+        // Mapear los datos con los encabezados
+        hojaDatos.push(encabezados);
+        datos.forEach(row => {
+            var rowData = [];
+            encabezados.forEach(encabezado => {
+                rowData.push(row[encabezado] || '');
+            });
+            hojaDatos.push(rowData);
+        });
+
+        // Crear un nuevo libro y una hoja con los datos
+        var libro = XLSX.utils.book_new();
+        var hoja = XLSX.utils.aoa_to_sheet(hojaDatos);
+        XLSX.utils.book_append_sheet(libro, hoja, "Historial");
+
+        // Escribir el libro y descargarlo
+        XLSX.writeFile(libro, nombreArchivo ? nombreArchivo + '.xlsx' : 'Historial_Solicitudes.xlsx');
+    }
+</script>

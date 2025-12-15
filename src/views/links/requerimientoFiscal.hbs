@@ -1,0 +1,371 @@
+<div class="container p-4 bg-white">
+    <div class="text-center p-3 mb-4 align-items-center">
+        <h2>Peticiones Fiscales</h2>
+    </div>
+    <div class="row">
+        <div class="">
+            <div class="card">
+                <div class="card-body">
+                    <div class="container mt-3">
+                        <form id="formRRFF" class="form-inline">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mt-4">
+                                        <h5>Código de Respaldo (CITE)</h5>
+                                        <input type="text" class="form-control" id="cite" placeholder="Ingresa CITE"
+                                            required>
+                                    </div>
+                                    <div class="bg-22 p-2 mt-3">
+                                        <h5 class="card-title">Seleccione un tipo de búsqueda</h5>
+                                        <div class="form-group">
+                                            <select id="selectTipo" class="form-control" title="Click para ver Opciones" required>
+                                                <option value="telefono">Teléfono</option>
+                                                <option value="ci">CI</option>
+                                                <option value="imei">IMEI</option>
+                                                <option value="nombre">Nombre</option>
+                                            </select>
+                                            <button type="button" id="btnAgregar" class="btn btn-success ml-2 mt-2">Añadir</button>
+                                        </div>
+                                        
+                                        <div id="camposDinamicos" class="mt-3"></div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mt-3">
+                                        <h5>Rango de Fechas</h5>
+                                        <label>Fecha Inicio</label>
+                                        <input type="date" class="form-control" id="fechaIni" required>
+                                        <label class="mt-2">Fecha Fin</label>
+                                        <input type="date" class="form-control" id="fechaFin" required>
+                                    </div>
+
+                                    <div class="mt-4">
+                                        <h5>Opciones de Información</h5>
+                                        <hr>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox"
+                                                        data-exclusive-with="suscriptor" id="NOM">
+                                                    <label class="form-check-label" for="NOM"><i
+                                                            class="bi bi-person-lines-fill"></i> Información del Suscriptor</label>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox"
+                                                        data-exclusive-with="suscriptor" id="DIR">
+                                                    <label class="form-check-label" for="DIR"><i
+                                                            class="bi bi-person-lines-fill"></i> + Domicilio</label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox"
+                                                        data-exclusive-with="suscriptor" id="REF">
+                                                    <label class="form-check-label" for="REF"><i
+                                                            class="bi bi-person-lines-fill"></i> + Contactos de referencia</label>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <hr>
+
+                                        <!-- Independientes -->
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="S">
+                                            <label class="form-check-label" for="S"><i class="bi bi-phone"></i> IMEI asociado al Suscriptor</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="RECARGAS">
+                                            <label class="form-check-label" for="RECARGAS"><i
+                                                    class="bi bi-cash-stack"></i> Detalle de recargas de crédito</label>
+                                        </div>
+
+                                        <hr>
+
+                                        <!-- Grupo: Detalles técnicos -->
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div style="">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="checkbox" id="LLA">
+                                                        <label class="form-check-label" for="LLA"><i
+                                                                class="bi bi-telephone"></i> Detalle de llamadas</label>
+                                                    </div>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="SMS">
+                                                    <label class="form-check-label" for="SMS"><i
+                                                            class="bi bi-chat-dots"></i> Detalle de tráfico de SMS</label>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="CEL">
+                                                    <label class="form-check-label" for="CEL"><i
+                                                            class="bi bi-broadcast"></i> + Radio bases</label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="IMEI">
+                                                    <label class="form-check-label" for="IMEI"><i
+                                                            class="bi bi-phone"></i> + IMEI</label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="NOM_VIVA">
+                                                    <label class="form-check-label" for="NOM_VIVA"><i
+                                                            class="bi bi-people"></i> + Detalle de suscriptores de Viva</label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <hr>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div style="">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="checkbox" id="DATOS">
+                                                        <label class="form-check-label" for="DATOS"><i
+                                                                class="bi bi-wifi"></i> Tráfico de datos GSM</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="CEL_DATOS">
+                                                    <label class="form-check-label" for="CEL_DATOS"><i
+                                                            class="bi bi-broadcast"></i> + Radio bases</label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <hr>
+                                    </div>
+                                </div>
+                            </div>
+
+
+
+
+                            <input type="hidden" id="fecha" value="">
+                            <input type="hidden" id="departamento" value="Oruro">
+                            <input type="hidden" id="solicitante" value="Ministerio Público">
+                            <input type="hidden" id="cargo_solicitante" value="Fiscal de Materia">
+
+                            <div class="text-center mt-4">
+                                <button type="submit" class="btn btn-success">Enviar solicitud</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    // Dependencia condicional: activar dependientes si alguno de los habilitadores está activo
+    function actualizarDependientes(habilitadores, dependientes) {
+        const algunoSeleccionado = habilitadores.some(id => document.getElementById(id).checked);
+        dependientes.forEach(id => {
+            const checkbox = document.getElementById(id);
+            checkbox.disabled = !algunoSeleccionado;
+            if (!algunoSeleccionado) {
+                checkbox.checked = false;
+            }
+        });
+    }
+
+    const habilitadores1 = ['LLA', 'SMS'];
+    const dependientes1 = ['CEL', 'IMEI', 'NOM_VIVA'];
+    const habilitadores2 = ['NOM'];
+    const dependientes2 = ['DIR', 'REF'];
+    const habilitadores3 = ['DATOS'];
+    const dependientes3 = ['CEL_DATOS'];
+
+    // Función de wrapper para mantener independencia
+    function bindDependencia(habilitadores, dependientes) {
+        // Inicializar
+        actualizarDependientes(habilitadores, dependientes);
+        // Escuchar cambios
+        habilitadores.forEach(id => {
+            const checkbox = document.getElementById(id);
+            if (checkbox) {
+                checkbox.addEventListener('change', () => {
+                    actualizarDependientes(habilitadores, dependientes);
+                });
+            }
+        });
+    }
+
+    bindDependencia(habilitadores1, dependientes1);
+    bindDependencia(habilitadores2, dependientes2);
+    bindDependencia(habilitadores3, dependientes3);
+</script>
+<script>
+    // Lógica mejorada con limpieza y validación dinámica (socket)
+    const camposDinamicos = document.getElementById("camposDinamicos");
+    const btnAgregar = document.getElementById("btnAgregar");
+    const selectTipo = document.getElementById("selectTipo");
+    let estadoInputs = {}; let listaSugerenciasActiva = null;
+
+    // Eliminar campos dinámicos al cambiar tipo
+    selectTipo.addEventListener("change", () => {
+        camposDinamicos.innerHTML = "";
+        estadoInputs = {};
+    });
+
+    // Generar ID único por tipo
+    function generarIdUnico(tipo) {
+        return `parametro_${tipo}_${Date.now()}`;
+    }
+
+    // Mostrar opciones flotantes
+    function mostrarOpciones(input, opciones, tipo) {
+        if (listaSugerenciasActiva) listaSugerenciasActiva.remove();
+        let lista = document.createElement("div");
+        lista.className = "lista-sugerencias";
+        lista.style.cssText = `position: absolute; background: white; border: 1px solid #ccc; padding: 5px; width: ${input.offsetWidth}px; z-index: 1000; max-height: 150px; overflow-y: auto; border-radius: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);`;
+        opciones.forEach(opcion => {
+            let item = document.createElement("div");
+            item.textContent = opcion.FULL_NAME + ', ' + opcion.DOCUMENT_IDENTIFIER;
+            item.style.padding = "8px";
+            item.style.cursor = "pointer";
+            item.onclick = () => {
+                input.value = tipo === 'ci' ? opcion.DOCUMENT_IDENTIFIER : opcion.FULL_NAME;
+                input.dispatchEvent(new Event('input'));
+                lista.remove();
+            };
+            lista.appendChild(item);
+        });
+        document.body.appendChild(lista);
+        const rect = input.getBoundingClientRect();
+        lista.style.top = `${rect.bottom + window.scrollY}px`;
+        lista.style.left = `${rect.left + window.scrollX}px`;
+
+
+        listaSugerenciasActiva = lista;
+        setTimeout(() => {
+            document.addEventListener("click", e => { if (!lista.contains(e.target) && e.target !== input) lista.remove(); }, { once: true });
+        }, 0);
+    }
+
+    // Crear nuevo campo
+    btnAgregar.addEventListener("click", () => {
+        const tipo = selectTipo.value;
+        const id = generarIdUnico(tipo);
+        const div = document.createElement("div");
+        div.className = "d-flex align-items-center mt-2 position-relative";
+
+        const input = document.createElement("input");
+        input.type = "text";
+        input.className = "form-control form-control-sm mt-3";
+        input.id = input.name = id;
+        input.placeholder = `Ingrese ${tipo}`;
+
+        const validador = document.createElement("div");
+        validador.className = "position-absolute text-muted";
+        validador.style.cssText = "top: 100%; left: 0; font-size: 12px; margin-top: 2px;";
+
+        input.addEventListener("input", () => {
+            let valor = input.value;
+            if (tipo === "telefono" || tipo === "imei") valor = valor.replace(/[^0-9]/g, "");
+            if (tipo === "ci") valor = valor.toUpperCase().replace(/[^A-Z0-9-]/g, "");
+            if (tipo === "nombre") valor = valor.toUpperCase().replace(/[^A-ZÑ.\s]/g, "").replace(/\s{2,}/g, ' ');
+            input.value = valor;
+            const valido = valor.length >= 6;
+            estadoInputs[input.id] = valido;
+            validador.textContent = valido ? "✔️ Válido" : "❌ Incompleto";
+            if (valido) socket.emit('cliente:verificarData', { tipo, valor, id });
+        });
+
+        const btnX = document.createElement("button");
+        btnX.type = "button";
+        btnX.className = "btn btn-sm btn-danger ml-2";
+        //btnX.style.marginTop = '-4px'
+        btnX.textContent = "x";
+        btnX.onclick = () => {
+            delete estadoInputs[input.id];
+            div.remove();
+        };
+
+        div.append(input, btnX, validador);
+        camposDinamicos.appendChild(div);
+    });
+
+    // Escuchar respuesta del servidor
+    socket.on('server:verificarData', ({ tipo, id, resultado }) => {
+        const input = document.getElementById(id);
+        if (!input) return;
+        if (tipo === "ci" || tipo === "nombre") mostrarOpciones(input, resultado, tipo);
+    });
+
+    document.getElementById("formRRFF").addEventListener("submit", function (e) {
+        e.preventDefault();
+
+        const tipo = selectTipo.value;
+
+        // Verifica si algún campo está vacío o marcado como inválido
+        const inputs = document.querySelectorAll("#camposDinamicos input");
+        let hayErrores = false;
+
+        inputs.forEach(input => {
+            const valor = input.value.trim();
+            const esValido = estadoInputs[input.id];
+
+            if (!valor || !esValido) {
+                hayErrores = true;
+                input.classList.add("is-invalid");
+            } else {
+                input.classList.remove("is-invalid");
+            }
+        });
+
+        if (hayErrores) {
+            alert("⚠️ Por favor, corrige los campos vacíos o inválidos antes de continuar.");
+            return;
+        }
+
+        // Si todo está bien, procede a construir el objeto
+        const data = {
+            solicitud_type: "rrff",
+            fechaIni: document.getElementById("fechaIni").value,
+            fechaFin: document.getElementById("fechaFin").value,
+            fecha: new Date().toISOString().split('T')[0],
+            departamento: 'HOST',
+            cite: document.getElementById("cite").value,
+            solicitante: 'USER',
+            cargo_solicitante: 'ADMINISTRADOR',
+            tipoBusqueda: tipo,
+            opcionesIDSeleccionadas: [],
+            opcionesSeleccionadas: []
+        };
+
+        document.querySelectorAll(".form-check-input:checked").forEach(cb => {
+            data.opcionesIDSeleccionadas.push(cb.id);
+            const label = cb.nextElementSibling ? cb.nextElementSibling.textContent.trim() : "";
+            data.opcionesSeleccionadas.push(label);
+        });
+        if(data.opcionesIDSeleccionadas.length == 0){
+            hayErrores = true;
+            alert("⚠️ Por favor, seleciona al menos un criterio de busqueda.");
+            return;
+        }
+        // Añadir campos dinámicos
+        inputs.forEach(input => {
+            const valor = input.value.trim();
+            if (valor) {
+                data[input.name] = valor;
+            }
+        });
+
+        console.log("✅ Datos validados y estructurados:", data);
+        if(confirm("⚠️ ¿Está seguro de enviar la solicitud?")){
+            // Aquí puedes enviar el objeto data al servidor o procesarlo como necesites
+            socket.emit('cliente:solicitudRRFF', data, {{user.idPersona}}, '{{dataip}}', false);
+        }
+    });
+    socket.on('server:solicitudRRFF', (id) => {
+        window.location.href = "/links/requerimientoFiscal/resultado/RF_" + id;
+    });
+    socket.on('server:solicitudRRFFRELOAD', (id) => {
+        //recargar la página actual
+        window.location.reload();
+    });
+
+</script>

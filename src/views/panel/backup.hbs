@@ -1,0 +1,72 @@
+<div class="container p-4 bg-white">
+    <div class="text-center m-5">
+        <h3>Restaurar Base de Datos del Sistema</h3>
+        <p>El sistema reliza copias de seguridad automatizadas.</p>
+        <button class="btn btn-sm btn-danger" onclick="copia()" id="bkpbtn">Realizar Copiar de Seguridad Ahora</button>
+    </div>
+    <div class="container p-4 bg-white">
+        <div class="row">
+            <div class="col-md-5 mx-auto">
+                <table class="table table-hover table-sm text-center">
+                    <thead>
+                        <tr >
+                            <th scope="col">Fecha de Backup</th>
+                            <th scope="col">Estado</th>
+                            <th scope="col">Accion</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{#each completo}}
+                        <tr>
+                            <td>
+                                {{archivo}}
+                            </td>
+                            <td class="text-success">Encriptado</td>
+                            <td>
+                                <form action="/links/panel/backup" method="post" id="miFormulario">
+                                    <input type="text" value="{{archivo}}" style="display: none;" name="nombre" id="">
+                                    <button type="submit" class="btn btn-warning btn-sm" style="margin-top: 0px;" onclick="enviar('{{archivo}}')">Restaurar esta copia</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {{/each}}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+    </div>
+</div>
+<script>
+    let btn = document.getElementById('bkpbtn');
+    document.getElementById('miFormulario').addEventListener('submit', function (event) {
+        var confirmacion = confirm("¿Estás seguro de que deseas RESTARURAR EL ESISTEMA? Esta Accion no puede deshacerse, puede afectar multiples funcionalidades y registros del Sistema.");
+        if (!confirmacion) {
+            // Si el usuario elige "Cancelar", se evita el envío del formulario
+            event.preventDefault();
+        }
+    });
+    function copia(){
+        if(confirm("¿Estás seguro de que deseas realizar una copia de seguridad?")) {
+            socket.emit('client:backup');
+            btn.innerHTML = `
+                <div class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></div>
+                Realizando Copia de Seguridad...
+            `;
+            btn.setAttribute("disabled", "true");
+
+        } else {
+            alert("No se ha realizado la copia de seguridad.");
+        }
+    }
+    socket.on('server:backupdone', function () {
+        alert("Copia de seguridad realizada con exito.");
+        btn.innerHTML = `
+            Realizar Copia de Seguridad Ahora
+        `;
+        btn.removeAttribute("disabled");
+    });
+
+
+</script>

@@ -1,0 +1,211 @@
+<div class="container p-4">
+    <div class="row">
+        
+        <div class="card">
+            <div class="text-center pt-5">
+                <h1>{{sucursal.nombre}}</h1>
+                <h6 class="text-success">de {{sucursal.nombreCentro}}</h6>
+            </div>
+            <div class="card-body">
+                <div id="map" style="height: 500px; width: 100%;">
+                    Revise su conexión a intenet.
+                </div>
+                <a class="link-underline-dark" target="_blank" href="https://maps.google.com/?q={{sucursal.latitud}},{{sucursal.longitud}}">Abrir ubicación el Google Maps</a>
+                
+            </div>
+            <div class="activacion p-3" id="activacion">
+                {{#if user}}
+                    <div class="alert alert-warning text-center">
+                    Solicitar una Emergencia Médica a este Centro de Salud. <br>
+                    <a onclick="aler()" class="btn btn-danger mt-2">Solicitar Emergencia</a>
+                {{else}}
+                    <div class="alert alert-danger text-center">
+                    Iniciar Sesión para solicitar una Emergencia Médica.
+                    <a href="/signin" class="btn btn-danger mt-0">Iniciar Sesión</a>
+                {{/if}}
+                </div>
+            </div>
+            <div class="card-body">
+                {{!--  --}}
+                <div class="row mt-3">
+                    <div class="col-sm-6 mb-3 mb-sm-0">
+                        <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Detalle</h5>
+                            <img src="/img/imgenCliente/{{sucursal.image}}" class="img-fluid" alt="..." width="100">
+                            <table class="table table-hover">
+                                <tbody>
+                                    <tr>
+                                        <th class="fw-normal" scope="row">Nombre Sucursal Centro Salud</th>
+                                        <td class="fw-light">{{sucursal.nombre}}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th class="fw-normal"scope="row">Detalle de Ubicación</th>
+                                        <td class="fw-light">{{sucursal.detalleUbicacion}}</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="fw-normal"scope="row">Telefono de Contacto</th>
+                                        <td class="fw-light">{{sucursal.telefono1}}</td>
+                                    </tr>
+                                    <tr>
+                                        <th  class="fw-normal"scope="row">Telefono de Emergencias</th>
+                                        <td class="fw-light">{{sucursal.telefono2}}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 mb-sm-0">
+                        <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Horarios de Atención</h5>
+                            {{#if horario}}
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">Día</th>
+                                            <th scope="col">Horario</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>Lunes</td>
+                                            <td>{{horario.lunes}}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Martes</td>
+                                            <td>{{horario.martes}}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Miercoles</td>
+                                            <td>{{horario.miercoles}}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Jueves</td>
+                                            <td>{{horario.jueves}}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Viernes</td>
+                                            <td>{{horario.viernes}}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Sábado</td>
+                                            <td>{{horario.sabado}}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Domingo</td>
+                                            <td>{{horario.domingo}}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Feriados</td>
+                                            <td>{{horario.feriados}}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            {{else}}
+                            <div class="alert alert-danger text-center" role="alert">
+                                No hay Horarios para este centro.
+                            </div>
+                            {{/if}}
+                        </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 mb-3 mt-3 mb-sm-0">
+                        <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Aspecialidades Asignadas</h5>
+                            <p class="fw-light">Coloca el puntero del mouse o presiona prolongadamente para ver el detalle de la Especialidad.
+                            </p>
+                            <table class="table table-hover">
+                                <tbody>
+                                    {{#each especialidades}}
+                                    <tr>
+                                        <td class="fw-normal" title="{{detalle}}">{{nombre}}</td>
+                                    </tr>
+                                    {{else}} 
+                                    <div class="alert alert-danger text-center" role="alert">
+                                        No hay Especialidades asignadas a este centro.
+                                    </div>
+                                    {{/each}}
+                                </tbody>
+                            </table>
+                        </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 mb-3 mt-3 mb-sm-0">
+                        <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Servicios Asignados</h5>
+                            <p class=" fw-light">Coloca el puntero del mouse o presiona prolongadamente para ver el detalle del Servicio.
+                            </p>
+                            <table class="table table-hover">
+                                <tbody>
+                                    {{#each servicios}}
+                                    <tr>
+                                        <td class="fw-normal" title="{{detalle}}">{{nombre}}</td>
+                                    </tr>
+                                    {{else}} 
+                                    <div class="alert alert-danger text-center" role="alert">
+                                        No hay Servicios asignados a este centro.
+                                    </div>
+                                    {{/each}}
+                                </tbody>
+                            </table>
+                        </div>
+                        </div>
+                    </div>
+                </div>
+                {{!--  --}}
+            </div>
+            <div class="mt-2">
+                
+            </div>
+        </div>
+    </div>
+</div>
+<script
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD_NYgArvBJRyXFVfxt-O71UtH9wJhtVYk&callback=initMap&v=weekly"
+    defer></script>
+<script>
+    function aler(){
+        if (window.confirm('Ok to Confirm, Cancel to Stay here')) {
+            window.location.href = "/links/directorio/sucursal/{{sucursal.idSucursal}}/emergencias";
+        };
+    }
+    function initMap() {
+        const centroSalud = { lat: {{sucursal.latitud}}, lng: {{sucursal.longitud}} };
+        const map = new google.maps.Map(document.getElementById("map"), {
+            scaleControl: false,
+            center: centroSalud,
+            zoom: 16,
+            styles:[
+                {
+                    featureType: "poi.business",
+                    stylers: [{ visibility: "off" }],
+                },
+                {
+                    featureType: "transit",
+                    elementType: "labels.icon",
+                    stylers: [{ visibility: "off" }],
+                },
+            ],
+            zoomControl: true,
+            mapTypeControl: false,
+            scaleControl: false,
+            streetViewControl: false,
+            rotateControl: true,
+            fullscreenControl: true
+        });
+        const infowindow = new google.maps.InfoWindow();
+        infowindow.setContent("{{sucursal.nombre}}<br><br>{{sucursal.detalleUbicacion}}");
+        const marker = new google.maps.Marker({ map, position: centroSalud });
+        marker.addListener("click", () => {
+            infowindow.open(map, marker);
+        });
+    }
+
+    window.initMap = initMap;
+    
+</script>

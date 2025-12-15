@@ -1,0 +1,324 @@
+<div class="container">
+    <div class="text-center mt-5 align-items-center">
+        <h4>Resultado de {{res.nombre}}</h4>
+        
+    </div>
+    <div class="row col-md-9s mx-auto" >
+        <div class="container-fluid px-4">
+            <div class="row g-3">
+
+                <!-- Card: Requerimiento -->
+                <div class="col-md-4">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div class="card-body small">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="card-title text-dark mb-1">📄 Requerimiento</h6>
+                                    <p class="fw-semibold mb-0">{{res.nombre}}</p>
+                                    {{#if user}}
+                                    <small class="text-muted">🎫 Ticket: {{res.pm}}</small>
+                                    {{/if}}
+                                </div>
+                                <div class="bg-light rounded-circle d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                                    <i class="bx bx-task text-dark fs-5"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card: Responsable -->
+                <div class="col-md-4">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div class="card-body small">
+                            <h6 class="card-title text-dark mb-1">👤 Responsable</h6>
+                            <p class="fw-semibold mb-0">{{res.ad}}</p>
+                            <small class="text-muted">🌐 IP: {{res.ip}}</small><br>
+                            <small class="text-muted">🕒 Fecha: {{res.fecha}}</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card: Búsqueda -->
+                <div class="col-md-4">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div class="card-body small">
+                            <h6 class="card-title text-dark mb-1">🔍 Parámetros de Búsqueda</h6>
+                            <p class="mb-1"><strong>Tipo:</strong> {{res.tipoBusqueda}}</p>
+                            <p class="mb-1"><strong>Rango:</strong> {{res.rangoBusqueda}}</p>
+                            <p class="mb-0"><strong>Solicitado:</strong> {{res.datoSolicitado}}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card: Entrada Buscada -->
+                <div class="col-12">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body small">
+                            <h6 class="card-title text-dark mb-2">📥 Datos Buscados</h6>
+                            <div class="bg-light rounded p-2 text-break small" style="white-space: pre-wrap;">{{res.entradaBusqueda}}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card: Archivos Adjuntos -->
+                <div class="col-12">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body small">
+                            <h6 class="card-title text-dark mb-2">📎 Archivos Adjuntos</h6>
+                            {{#if res.archivo}}
+                            <div class="alert alert-success py-2 px-3 mb-0 small" id="vigente">
+                                <a href="/links/download/{{res.nombre}}" class="text-decoration-none fw-semibold">Descargar {{res.archivo}} archivo(s)</a><br>
+                                <span class="text-muted">Eliminación automática tras 28 días.</span>
+                            </div>
+                            <div class="alert alert-warning d-none small mt-2" id="vencido">
+                                ⚠️ Los archivos fueron eliminados.
+                            </div>
+                            {{else}}
+                            <div class="alert alert-warning py-2 px-3 mb-0 small">
+                                ⚠️ No hay archivos disponibles.
+                            </div>
+                            {{/if}}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card: Resultado con botón copiar -->
+                <div class="col-12">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body small">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="card-title text-dark mb-0">📤 Resultado</h6>
+                                <button id="copyButton" class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard()">
+                                    Copiar
+                                </button>
+                            </div>
+                            <textarea id="myTextarea"
+                                    class="form-control bg-light border-0 small"
+                                    style="font-family: monospace; white-space: pre-wrap;font-size:14px;"
+                                    rows="10"
+                                    readonly>{{res.resultado}}</textarea>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+
+
+
+        
+    </div>
+    <hr class="m-3">
+    <!-- Card: Procedimiento usado -->
+    {{#if res.procedimiento_usado}}
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="card-title text-dark mb-0">🧮 Procedimiento usado</h6>
+                <button class="btn btn-sm btn-outline-secondary" type="button"
+                        data-bs-toggle="collapse" data-bs-target="#sqlProc"
+                        aria-expanded="false" aria-controls="sqlProc">
+                    Mostrar/Ocultar
+                </button>
+            </div>
+            <div class="collapse" id="sqlProc">
+                <div class="card-body small">
+                    <pre class="bg-light rounded p-3 mb-0" style="white-space: pre; overflow-x: auto;">{{{res.procedimiento_usado}}}</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+    {{/if}}
+
+
+<!-- Modal -->
+<div class="modal fade" id="miModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
+    
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title" id="exampleModalLabel">La busqueda está en proceso</h6>
+            </div>
+            <div class="modal-body d-flex justify-content-center">
+                {{!-- <div class="spinner-grow text-success" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div> --}}
+                    {{!-- <span class="loader mt-0"></span> --}}
+                <br>
+                <h6 class="fw-light" style="margin-left: 5px; margin-top:-1px; font-size: 15px" >Este proceso puede demorar dependiendo la complejidad de busqueda...</h6>
+
+            </div>
+            <div class="p-2">
+                <div class="progress" role="progressbar" aria-label="Animated striped example" aria-valuenow="75" aria-valuemin="0"
+                    aria-valuemax="100">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-warning text-dark" id="progress" style="width: 15%">15%</div>
+                </div>
+                <div class="text-center d-flex justify-content-center mt-2">
+                    <div class="spinner-border text-warning spinner-border-sm" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="fw-light fs-6" style="margin-left: 10px; margin-top:-5px;" id="texto">Esperando a Mits</p>
+                </div>
+            </div>
+            <div class="modal-footer text-left">
+                <a href="/links/requerimientoFiscal" target="_blank">Hacer otro RRFF</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+        
+</div>
+<script>
+   const fechaString = '{{res.fecha}}';
+    console.log(`{{{res.procedimiento_usado}}}`)
+
+    // Convertir la cadena de fecha a un objeto Date, solo para la fecha
+    const fechaParte = fechaString.split(' - ')[0];
+    const fechaObjeto = new Date(fechaParte);
+
+    // Ajustar la fechaObjeto para que no tenga en cuenta la hora
+    fechaObjeto.setHours(0, 0, 0, 0);
+
+    // Obtener la fecha actual sin considerar la hora
+    const fechaActual = new Date();
+    fechaActual.setHours(0, 0, 0, 0);
+
+    // Calcular la diferencia en días
+    const diferenciaTiempo = fechaActual - fechaObjeto;
+    const diferenciaDias = diferenciaTiempo / (1000 * 60 * 60 * 24);
+
+    // Verificar si han pasado más de 28 días
+    const hanPasado28Dias = diferenciaDias > 28;
+    var ar = {{res.archivo}}
+    console.log(ar) 
+    if (diferenciaDias > 28 && ar > 0) {
+        document.getElementById('vigente').style.display = 'none';
+        document.getElementById('vencido').style.display = '';
+    }
+
+   // console.log(diferenciaDias); // Muestra la diferencia en días
+    //console.log(hanPasado28Dias); // true si han pasado más de 28 días, false en caso contrario
+
+    socket.on('server:progress{{res.nombre}}', (valor, avance) => {
+        //console.log(valor,avance)
+        //location.reload();
+        var progress = document.getElementById('progress')
+        var detalle = document.getElementById('texto')
+        progress.style.width = valor + '%'
+        progress.innerHTML = valor + '%'
+
+        detalle.innerHTML = avance
+
+    });
+    socket.on('server:solicitudRRFF{{res.nombre}}', () => {
+            location.reload();
+
+        });
+    document.addEventListener("DOMContentLoaded", function () {
+            var myModal = new bootstrap.Modal(document.getElementById('miModal'), {});
+
+            {{#if res.body }}
+            myModal.show();
+            {{else }}
+            {{/if}}
+
+        });
+
+    function copyToClipboard() {
+            const textarea = document.getElementById('myTextarea');
+            const button = document.getElementById('copyButton');
+
+            textarea.disabled = false; // Temporalmente habilitar el textarea para copiar
+            textarea.select();
+            document.execCommand('copy');
+            textarea.disabled = true; // Deshabilitar nuevamente el textarea
+
+            // Cambiar el texto y el color del botón
+            button.innerHTML = 'Copiado!';
+            button.classList.remove('btn-secondary');
+            button.classList.add('btn-success');
+
+            // Volver al estado original después de 2 segundos (2000 milisegundos)
+            setTimeout(() => {
+                button.innerHTML = 'Copiar';
+                button.classList.remove('btn-success');
+                button.classList.add('btn-secondary');
+            }, 2000);
+        }
+
+
+
+    var btn = document.getElementById('agregar');
+    var invalid = document.getElementById('invalid');
+    var nit = document.getElementById('nit');
+    var contenido = document.querySelector('ol.list-group.list-group-numbered');
+
+    function verificarNit() {
+        nit.value = Number(nit.value);
+        if (nit.value.length > 4) {
+            socket.emit('cliente:verifNit', nit.value);
+        } else {
+            invalid.innerHTML = "NIT muy corto";
+            nit.className = 'form-control is-invalid';
+            btn.disabled = true;
+        }
+        //console.log(nit.value);
+    }
+    function agregarNit() {
+        nit.value = Number(nit.value);
+        socket.emit('cliente:registrarNit', nit.value);
+    }
+    function nitDiv(id, nit, newNit) {
+        const div = document.createElement("li");
+        div.innerHTML = `
+            --> ${nit}
+            <div class="text-end">
+                <button type="button" onclick="eliminar(${id})" class="btn btn-outline-danger" disabled>Eliminar</button>
+            </div>
+        `;
+        if (nit == newNit) {
+            div.className = 'list-group-item list-group-item-success list-group-item-action';
+            div.innerHTML += `Nit nuevo Agregado Exitosamente`
+        } else {
+            div.className = 'list-group-item list-group-item-action';
+        }
+
+        return div;
+    }
+    function eliminar(id) {
+        socket.emit('cliente:eliminarNit', id);
+    }
+
+    //sockets
+    socket.on('server:nitLibre', () => {
+        //invalid.innerHTML = "NIT disponible.";
+        nit.className = 'form-control is-valid';
+        btn.disabled = false;
+    });
+    socket.on('server:nitUsado', () => {
+        invalid.innerHTML = "Este NIT ya EXISTE, usa otro.";
+        nit.className = 'form-control is-invalid';
+        btn.disabled = true;
+    });
+    socket.on('server:nitRegistrado', (nit1, nits) => {
+
+        var span = document.querySelector('.badge.text-bg-danger');
+        if (nit1 == null) {
+            span.style.display = '';
+        } else {
+            span.style.display = 'none';
+        }
+        contenido.innerHTML = "";
+        nits.forEach(async function (element, index) {
+            contenido.append(nitDiv(element.idNit, element.nit, nit1));
+        });
+        nit.value = '';
+        invalid.innerHTML = "NIT muy corto";
+        nit.className = 'form-control is-invalid';
+        btn.disabled = true;
+    });
+
+</script>

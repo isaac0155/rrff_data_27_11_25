@@ -1,0 +1,166 @@
+<div class="container p-4 bg-white">
+    <div class="text-center p-3 align-items-center">
+        <h2>Gestión de Roles del sistema</h2>
+        <br>
+        <br>
+        <div class="row" style="display: flex;justify-content: center; align-items: center;">
+            <label class="col-form-label">Agregar nuevo Rol</label>
+            <div class="col-auto">
+            </div>
+            <div class="col-md-4">
+                <input type="text" id="nit" name="nit" onkeyup="verificarNit()" class="form-control"
+                    placeholder="Ingrese el ROL nuevo" autofocus>
+                {{!-- --}}
+                <div class="invalid-feedback" id="invalid"></div>
+                <div class="valid-feedback">
+                    ROL disponible.
+                </div>
+                {{!-- --}}
+            </div>
+            <div class="col-auto">
+            </div>
+            <span id="passwordHelpInline" class="form-text">
+                <button type="button" onclick="agregarNit()" id="agregar" class="btn btn-outline-success mt-0"
+                    disabled>Agregar</button>
+            </span>
+        </div>
+        <span class="badge text-bg-danger" style="display: none;">
+            <h6>Rol eliminado exitosamente</h6>
+        </span>
+        <div id="ass">
+        </div>
+    </div>
+    <div class="" style="">
+        <ol class="list-group list-group-numbered">
+            {{#each rol}}
+            <li class="list-group-item list-group-item-action"> --> {{nombreRol}}
+                <div class="text-end">
+                    <button type="button" onclick="eliminar({{idRol}})" class="btn btn-outline-danger mt-0"
+                        >Eliminar</button>
+                </div>
+            </li>
+            {{else}}
+            <p>Aún no hay ROlES registrados.</p>
+            {{/each}}
+        </ol>
+    </div>
+</div>
+<script>
+
+
+    function actualizarFechaHora() {
+        var fechaHoraActual = new Date();
+
+        // Formatear la fecha y hora
+        var year = fechaHoraActual.getFullYear();
+        var month = String(fechaHoraActual.getMonth() + 1).padStart(2, '0'); // Sumar 1 al mes (los meses comienzan en 0)
+        var day = String(fechaHoraActual.getDate()).padStart(2, '0');
+        var hours = String(fechaHoraActual.getHours()).padStart(2, '0');
+        var minutes = String(fechaHoraActual.getMinutes()).padStart(2, '0');
+        var seconds = String(fechaHoraActual.getSeconds()).padStart(2, '0');
+
+        var fechaHoraFormateada = year + '-' + month + '-' + day + ' ' + hours + ':' + minutes + ':' + seconds;
+
+        return fechaHoraFormateada
+    }
+    var btn = document.getElementById('agregar');
+    var invalid = document.getElementById('invalid');
+    var nit = document.getElementById('nit');
+    var contenido = document.querySelector('ol.list-group.list-group-numbered');
+
+    function verificarNit() {
+        nit.value = (nit.value);
+        if (nit.value.length > 3) {
+            socket.emit('cliente:verifRol', nit.value);
+        } else {
+            invalid.innerHTML = "Rol muy corto";
+            nit.className = 'form-control is-invalid';
+            btn.disabled = true;
+        }
+        //console.log(nit.value);
+    }
+    function agregarNit() {
+        var fecha = actualizarFechaHora()
+        socket.emit('cliente:registrarRol', {{user.idPersona}}, nit.value, fecha);
+    }
+    function nitDiv(id, nit, newNit) {
+        const div = document.createElement("li");
+        div.innerHTML = `
+            --> ${nit}
+            <div class="text-end">
+                <button type="button" onclick="eliminar(${id})" class="btn btn-outline-danger">Eliminar</button>
+            </div>
+        `;
+        if (nit == newNit) {
+            div.className = 'list-group-item list-group-item-success list-group-item-action';
+            div.innerHTML += `Rol nuevo Agregado Exitosamente`
+        } else {
+            div.className = 'list-group-item list-group-item-action';
+        }
+
+        return div;
+    }
+    function eliminar(id) {
+        var fecha = actualizarFechaHora()
+        socket.emit('cliente:eliminarRol', {{ user.idPersona }}, id, fecha);
+    }
+
+    //sockets
+    socket.on('server:rolLibre', () => {
+        invalid.innerHTML = "ROL disponible.";
+        nit.className = 'form-control is-valid';
+        btn.disabled = false;
+    });
+    socket.on('server:rolDependiente', () => {
+        //console.log('sss')
+        document.getElementById('ass').innerHTML = "";
+        document.getElementById('ass').innerHTML += `
+            <div class="container" id="ass" style="">
+                <div class="row">
+                    <div class="mx-auto">
+                        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                            No se puede eliminar este rol, hay usuarios que lo usan.
+                            <button type="button" class="btn-close mt-0" data-bs-dismiss="alert" aria-label="Close" id="closeButton"></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+    });
+    socket.on('server:rolUsado', () => {
+        invalid.innerHTML = "Este Rol ya EXISTE, usa otro.";
+        nit.className = 'form-control is-invalid';
+        btn.disabled = true;
+    });
+    socket.on('server:rolRegistrado', (nit1, nits) => {
+
+        var span = document.querySelector('.badge.text-bg-danger');
+        if (nit1 == null) {
+            document.getElementById('ass').innerHTML = "";
+            document.getElementById('ass').innerHTML += `
+                <div class="container p-4" id="ass" style="">
+                    <div class="row">
+                        <div class="col-md-4 mx-auto">
+                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                Rol Eliminado Correctamente.
+                                <button type="button" class="btn-close mt-0" data-bs-dismiss="alert" aria-label="Close" id="closeButton"></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+        } else {
+             document.getElementById('ass').innerHTML = "";
+        }
+        contenido.innerHTML = "";
+        nits.forEach(async function (element, index) {
+            contenido.append(nitDiv(element.idRol, element.nombreRol, nit1));
+        });
+        nit.value = '';
+        invalid.innerHTML = "NIT muy corto";
+        nit.className = 'form-control is-invalid';
+        btn.disabled = true;
+    });
+</script>

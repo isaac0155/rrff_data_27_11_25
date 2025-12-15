@@ -1,0 +1,262 @@
+{{#equals user.ad 'isherrera'}}
+<div class="container">
+    <div class="row p-3">
+        <div class="mb-3 mb-sm-0">
+            <div class="card">
+                <div class="card-body">
+                    <form class="row g-3 needs-validation input-group-sm" id="miFormulario">
+                        <div class="col-md-3 input-group-sm">
+                            <label for="validationCustom01" class="form-label">Usuario</label>
+                            <select required class="form-select" id="miSelect" name="idPersona"
+                                aria-label="Default select example">
+                                <option value="" selected>Escoge un usuario</option>
+                                {{#each users}}
+                                <option value="{{idPersona}}">{{ad}}</option>
+                                {{/each}}
+                            </select>
+                        </div>
+                        <div class="col-md-3 input-group-sm">
+                            <label for="" class="form-label">Fecha Inicio</label>
+                            <input type="date" class="form-control" id="" name="fechaIni" value="{{inicio}}"
+                                min="{{inicio}}" max="{{fin}}" required>
+                        </div>
+                        <div class="col-md-3 input-group-sm">
+                            <label for="" class="form-label">Fecha Fin</label>
+                            <input type="date" class="form-control" id="" name="fechaFin" value="{{fin}}"
+                                min="{{inicio}}" max="{{fin}}" required>
+                        </div>
+                        <div class="col-md-3 input-group-sm">
+                            <button class="btn btn-success btn-sm" style="margin-top: 30px;">Buscar</button>
+                            <a class="btn btn-warning btn-sm" type="button" href="/links/grafica/all"
+                                style="margin-top: 30px;">Ver Todos los Usuarios</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{{/equals}}
+
+
+<canvas style="height: 1900px;" class="bg-white" id="miGrafico"></canvas>
+
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+<script>
+    document.getElementById('miFormulario').addEventListener('submit', function (event) {
+        event.preventDefault(); // Previene el envío normal del formulario
+
+        let formData = {};
+        const inputs = this.elements; // Obtiene todos los elementos del formulario
+
+        for (let i = 0; i < inputs.length; i++) {
+            if (inputs[i].name) { // Asegúrate de que el elemento tenga un atributo 'name'
+                formData[inputs[i].name] = inputs[i].value;
+            }
+        }
+
+        // Convertir el objeto formData a una cadena JSON
+        const jsonFormData = JSON.stringify(formData);
+        var data = formData
+        // Imprimir en la consola
+        console.log(formData);
+        const queryString = Object.keys(data).map(key => {
+            return encodeURIComponent(key) + '=' + encodeURIComponent(data[key]);
+        }).join('&');
+        const urlConDatos = '/links/grafica/' + queryString;
+        window.location.href = urlConDatos
+
+    });
+    var datos = [
+        {{#each datos}}
+            
+        {
+            Fecha: '{{Fecha}}',
+            NumeroDeFilas: {{NumeroDeFilas}},
+            PersonasConConteo: '{{PersonasConConteo}}'
+        },
+        {{/each}}
+        // ... más datos ...
+    ];
+    grafic(datos)
+    var miGrafico; 
+    function grafic(datos){
+        // Suponiendo que tus datos están en una variable llamada 'datos'
+        
+        datos.forEach(function(data, index){
+            if(data.PersonasConConteo.length > 0){
+
+            datos[index].PersonasConConteo = JSON.parse(data.PersonasConConteo.replace(/&quot;/g, '"'))
+            }
+        })
+        //console.log('aa',datos)
+        // Obteniendo todas las claves únicas de personas
+        var todasLasPersonas = new Set();
+        datos.forEach(item => {
+            Object.keys(item.PersonasConConteo).forEach(persona => {
+                todasLasPersonas.add(persona);
+            });
+        });
+        var a = 0;
+        // Preparar datasets para cada persona
+        var datasets = Array.from(todasLasPersonas).map(persona => {
+            return {
+                label: persona,
+                data: datos.map(item => item.PersonasConConteo[persona] || 0),
+                backgroundColor: obtenerColorSecuencial(), // Función para obtener un color
+                stack: 'Stack 0'
+            };
+        });
+
+        var indiceColorActual = 0;
+        function obtenerColorSecuencial() {
+            var colores = [
+                '#ff6384', '#36a2eb', '#cc65fe', '#ffce56', '#4bc0c0',
+                '#f37070', '#c9cbcf', '#7ac142', '#5a9bd4', '#faa75a',
+                '#9e67ab', '#ce7058', '#d77fb3', '#737373', '#9acd32',
+            ];
+
+            var color = colores[indiceColorActual];
+            indiceColorActual = (indiceColorActual + 1) % colores.length; // Avanzar al siguiente color, reiniciar si es necesario
+            return color;
+        }
+        //console.log(datasets)
+        var ctx = document.getElementById('miGrafico').getContext('2d');
+        //document.getElementById('miGrafico').style=''
+        if (miGrafico) {
+            miGrafico.destroy();
+        }
+        miGrafico = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: datos.map(item => formatearFecha(item.Fecha)),
+                datasets: datasets
+            },
+            options: {
+                scales: {
+                    y: {
+                        stacked: true, // Habilitar el apilamiento
+                        beginAtZero: true
+                    },
+                    x: {
+                        stacked: true // Habilitar el apilamiento
+                    }
+                },
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Grafico estadístico de Consultas a RRFF'
+                    }, tooltip: {
+                        enabled: true,
+                        callbacks: {
+                            label: function (context) {
+                                var label = context.dataset.label || '';
+                                var value = context.parsed.y;
+                                return label + ': ' + value;
+                            },
+                            footer: function (context) {
+                                const fechaString = context[0].label
+                                const fecha = new Date(fechaString);
+                                const opciones = { weekday: 'long' };
+                                const diaCompleto = fecha.toLocaleDateString('es-ES', opciones);
+                                return diaCompleto.charAt(0).toUpperCase() + diaCompleto.slice(1);
+                            }
+                        }
+                    },
+                    datalabels: {
+                        color: '#000000',
+                        anchor: 'end',
+                        align: 'top',
+                        formatter: function (value, context) {
+                            // Calcular la suma total para la barra apilada
+                            let sumaTotal = 0;
+                            let datasetIndex = context.datasetIndex;
+                            let dataLength = context.chart.data.datasets.length;
+                            // Verificar si es el último dataset
+                            if (datasetIndex === dataLength - 1) {
+                                context.chart.data.datasets.forEach(dataset => {
+                                    sumaTotal += dataset.data[context.dataIndex];
+                                });
+                                return sumaTotal;
+                            } else {
+                                return null; // No mostrar etiqueta para datasets que no son el último
+                            }
+                        },
+                        display: function (context) {
+                            // Solo mostrar la etiqueta en el último dataset
+                            return context.datasetIndex === context.chart.data.datasets.length - 1;
+                        }
+                    }
+                }
+            },
+            plugins: [ChartDataLabels] // Registrar el plugin
+        });
+    }
+
+    // Función para formatear la fecha
+    function formatearFecha(fechaString) {
+        // Asegurarse de que la fecha se interpreta en la zona horaria local
+        const fecha = new Date(fechaString + 'T00:00');
+
+        // Días de la semana y meses en formato abreviado
+        const diasSemana = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+        const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
+        // Obtener componentes de la fecha
+        const diaSemana = diasSemana[fecha.getDay()];
+        const dia = fecha.getDate();
+        const mes = meses[fecha.getMonth()];
+        const anio = fecha.getFullYear();
+
+        // Construir la cadena formateada
+        const fechaFormateada = `${dia} ${mes} ${anio}`;
+
+        return fechaFormateada;
+    }
+
+    function actualizarUltimaBarra(nuevosIncrementos) {
+        // Obtener el índice de la última barra en el gráfico
+        let ultimoIndice = miGrafico.data.labels.length - 1;
+
+        // Sumar los incrementos a los valores actuales de cada persona en la última barra
+        miGrafico.data.datasets.forEach(function(dataset) {
+            if (nuevosIncrementos[dataset.label]) {
+                // Asegurarse de que el valor actual más el incremento se aplique solo al último punto de datos
+                dataset.data[ultimoIndice] += nuevosIncrementos[dataset.label];
+            }
+        });
+
+        // Actualizar la suma total para la última barra, si es necesario
+        if (miGrafico.data.datasets[0].label === 'Total') {
+            let sumaTotal = miGrafico.data.datasets.reduce((sum, dataset, index) => {
+                // Asegúrate de no sumar el total acumulado de los datasets al total general
+                if (index !== 0) {
+                    sum += dataset.data[ultimoIndice];
+                }
+                return sum;
+            }, 0);
+            miGrafico.data.datasets[0].data[ultimoIndice] = sumaTotal;
+        }
+
+        // Llamar al método 'update' para refrescar el gráfico con los nuevos valores
+        miGrafico.update();
+    }
+
+    // Datos de ejemplo para sumar a la última barra
+
+
+    // Llama a la función para actualizar la última barra
+    function actualizarGrafico() {
+    }
+    socket.on('user:grafica', (ad) => {
+        //console.log(ad)
+        var nuevosIncrementos = {}
+        nuevosIncrementos[ad] = 1;
+        //console.log(nuevosIncrementos)
+        actualizarUltimaBarra(nuevosIncrementos);
+    });
+    //setInterval(actualizarGrafico, 1000);
+
+</script>

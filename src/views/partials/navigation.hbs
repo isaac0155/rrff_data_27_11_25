@@ -1,0 +1,124 @@
+
+   <nav class="navbar navbar-expand-lg colorNav">
+        <div class="container">
+            <a class="navbar-brand text-white" href="/">
+            Datos Nuevatel</a>
+            <button class="navbar-toggler" id="newLinkBtn" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse " id="navbarNav">
+                <ul class="navbar-nav ms-auto ">
+                    
+                    {{#if user}}
+                    <!-- Contenido para mostrar si el usuario es 'ODECO' o 'Segunda Linea' -->
+                        {{#hasAnyRole user "Nominal"}}
+
+                                <li class="nav-item">
+                                    <a class="nav-link position-relative text-white" id="newLink" href="/links/solicitud/new" role="button"> Solicitud Nueva
+                                    </a>
+                                </li>
+                        {{else}}
+                            {{#hasAnyRole user "ODECO,Segunda Linea"}}
+                            {{else}}
+                                <li class="nav-item">
+                                    <a class="nav-link position-relative text-white" id="newLink" href="/links/solicitud/new" role="button"> Solicitud Nueva
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link position-relative text-white" id="" href="/links/detallellamadas/" role="button">
+                                        <img src="/img/call.png" style="margin-right: -1px; margin-top:-5px" alt="" width="18" height="18"> Detalle de Llamadas
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link position-relative text-white" id="newLink" href="/links/requerimientoFiscal" role="button">
+                                        <img src="/img/mazo.png" style="margin-right: -1px; margin-top:-5px" alt="" width="18" height="18"> Consultar un Requerimiento
+                                    </a>
+                                </li>
+                            <!-- Contenido para mostrar si el usuario no tiene ninguno de los roles -->
+                            {{/hasAnyRole}}
+                        {{/hasAnyRole}}
+
+                        <li class="nav-item dropdown text-white">
+                            <a class="nav-link dropdown-toggle text-white" href="#" role="button" data-bs-toggle="dropdown"
+                                aria-expanded="false">
+                                <img src="/img/settings1.png" style="margin-right: -1px; margin-top:-5px" alt="" width="18" height="18">   Administración
+                            </a>
+                            <ul class="dropdown-menu">
+                                {{#if user.Administrador}}
+                                <li>
+                                    <a class="dropdown-item" href="/links/panel" role="button">
+                                        <img src="/img/settings.png" style="" alt="" width="18" height="18"> Panel de control
+                                    </a>
+                                </li>
+                                {{/if}}
+                                {{#if user}}
+                                {{#hasAnyRole user "ODECO,Segunda Linea"}}
+                                {{else}}
+                                {{#hasAnyRole user "Nominal"}}
+
+                                <li>
+                                    <a class="dropdown-item" id="" href="/links/historial/solicitud" role="button">
+                                        <img src="/img/file.png" style="" alt="" width="18" height="18"> Mi Historial de Solicitudes
+                                    </a>
+                                </li>
+                                {{else}}
+                                <li>
+                                    <a class="dropdown-item" id="" href="/links/historial/solicitud" role="button">
+                                        <img src="/img/file.png" style="" alt="" width="18" height="18"> Mi Historial de Solicitudes
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" id="newLink" href="/links/historial" role="button">
+                                        <img src="/img/file.png" style="" alt="" width="18" height="18"> Mi Historial de RRFF
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" id="" href="/links/historialdetalledellamadas" role="button">
+                                        <img src="/img/file.png" style="" alt="" width="18" height="18">Historial de Detalle de Llamadas
+                                    </a>
+                                </li>
+                                {{/hasAnyRole}}
+                                {{/hasAnyRole}}
+                                {{/if}}
+                            </ul>
+                        </li>
+                        <li class="nav-item dropdown text-white">
+                            <a class="nav-link dropdown-toggle text-white" href="#" role="button" data-bs-toggle="dropdown"
+                                aria-expanded="false">
+                                {{#if user.foto}}
+                                <img src="/img/profiles/{{user.foto}}" class="rounded-circle"  style="margin-left: -5px; margin-top:-3px" alt="" width="18" height="18">
+                                {{else}}  
+                                <img src="https://i.ibb.co/sy5YrsX/user.png" class="rounded-circle"  style="margin-left: -5px; margin-top:-3px" alt="" width="18" height="18">
+                                {{/if}}
+                                {{user.ad}}
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li>
+                                    <a class="dropdown-item" href="/profile" role="button">
+                                        <img src="/img/user2.png" style="" alt="" width="18" height="18"> Mi Perfil
+                                    </a>
+                                </li>
+                                <li>
+                                    <hr class="dropdown-divider">
+                                </li>
+                                <li>
+                                    <a class="dropdown-item text-danger" href="/logout" role="button">
+                                        <img src="/img/logout.png" style="" alt="" width="18" height="18"> Cerrar Sesión
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
+
+                    {{else}}
+                        <li class="nav-item">
+                            <a class="nav-link text-white" href="/signin" role="button">
+                                Iniciar Sesión
+                            </a>
+                        </li>
+                    {{/if}}
+                </ul>
+            </div>
+        </div>
+    </nav>

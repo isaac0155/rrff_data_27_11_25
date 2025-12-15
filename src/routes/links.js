@@ -1,0 +1,1407 @@
+const helpers = require('../lib/helpers');
+const fs = require('fs');
+const path = require('path');
+const shortid = require('shortid');
+const archiver = require('archiver');
+const express = require('express');
+const router = express.Router();
+const pool = require('../database');
+const { isLoggedIn } = require('../lib/auth')
+const { isAdmin } = require('../lib/auth')
+const { isCall } = require('../lib/auth')
+const { formatJson, controlRRFF } = require('./funciones/controlRRFF')
+const { convertirFecha } = require('./funciones/format');
+const upload = require('../lib/storage')
+const { restoreDatabase, backupDatabase } = require('../lib/config/backupMySQL');
+const { select } = require('async');
+const resultadosSys = require('./funciones/system');
+const resultadoOdeco = require('./funciones/llamadasOdeco');
+const { resolveSoa } = require('dns');
+const { buscarPorNombre, verificarTelefono, buscarPorCI, buscarPorIMEI } = require('./funciones/verificarODB');
+const { json } = require('stream/consumers');
+const { results_convert_html, updatePdfWithResults } = require('./funciones/pdf_process');
+const puppeteer = require('puppeteer');
+
+
+let ret = (io) => {
+    io.on("connection", (socket) => {
+        socket.on('client:backup', async () => {
+            await backupDatabase(false);
+            socket.emit('server:backupdone');
+        });
+        socket.on('cliente:enviarData', async (data, user, ip, id_reintento) => {
+            let historialId; // ID del historial en la base de datos
+            let startTime = Date.now(); // Tiempo de inicio
+            let error = false; // Bandera de error
+            console.log(user, '-------------------')
+            const ad = user ? user:false;
+            let userId = '';
+            if (ad) {
+                userId = await pool.query('SELECT idPersona FROM persona WHERE ad = ?', [ad])
+                console.log(userId, '-------------------', 'SELECT idPersona FROM persona WHERE ad = ?', [ad])
+                userId = userId[0].idPersona;
+            }else{
+                userId = await pool.query('SELECT idPersona FROM persona WHERE ad = "system"')
+                userId = userId[0].idPersona;
+                if(userId.length == 0){
+                    let insertSystem = await pool.query('INSERT INTO persona (ad, idRol, activo) VALUES ("system", 2, 1)');
+                    userId = insertSystem.insertId;
+                }
+            }
+
+            try {
+                let queryFth = ''
+                let values = []
+
+                if (id_reintento){
+                    // 📌 ACTUALIZAR SOLICITUD EXISTENTE
+                    queryFth = `
+                    UPDATE historial_respuesta_pdf
+                    SET json_consultas = ?, tipo_solicitud = ?, fecha_inicio = ?, fecha_fin = ?, fecha_solicitud = ?,
+                        departamento = ?, cite = ?, cocite = ?, solicitante = ?, cargo_solicitante = ?,
+                        json_busqueda = ?, estado = ?, tiempo_solucion = ?
+                    WHERE id_historial_respuesta_pdf = ?
+                    `
+                    values = [
+                        '', // Se actualizará después con los procesos
+                        data.solicitud_type || 'desconocido', // Tipo de solicitud
+                        data.fechaIni, // Fecha de inicio
+                        data.fechaFin, // Fecha de fin
+                        data.fecha, // Fecha de solicitud
+                        data.departamento, // Departamento
+                        data.cite, // CITE
+                        data.cocite, // COCITE
+                        data.solicitante, // Solicitante
+                        data.cargo_solicitante, // Cargo del solicitante
+                        JSON.stringify(data), // JSON de búsqueda
+                        'pendiente', // Estado inicial
+                        calcularTiempo(startTime), // Tiempo de ejecución inicial
+                        //userId,
+                        //ip,
+                        //ad,
+                        id_reintento // ID del historial a actualizar
+                    ];
+                    historialId = id_reintento
+                    const result = await pool.query(queryFth, values);
+                    console.log('Actualizando solicitud existente con ID:', historialId, queryFth, values);
+
+                }else{
+
+
+                    // 📌 INSERTAR NUEVA SOLICITUD Y GUARDAR EL ID
+                    queryFth = `
+                    INSERT INTO historial_respuesta_pdf (
+                        json_consultas, tipo_solicitud, fecha_inicio, fecha_fin, fecha_solicitud, 
+                        departamento, cite, cocite, solicitante, cargo_solicitante, 
+                        json_busqueda, estado, tiempo_solucion, user_id, ip, user
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        `;
+                        
+                        values = [
+                        '', // Se actualizará después con los procesos
+                        data.solicitud_type || 'desconocido', // Tipo de solicitud
+                        data.fechaIni, // Fecha de inicio
+                        data.fechaFin, // Fecha de fin
+                        data.fecha, // Fecha de solicitud
+                        data.departamento, // Departamento
+                        data.cite, // CITE
+                        data.cocite, // COCITE
+                        data.solicitante, // Solicitante
+                        data.cargo_solicitante, // Cargo del solicitante
+                        JSON.stringify(data), // JSON de búsqueda
+                        'pendiente', // Estado inicial
+                        calcularTiempo(startTime), // Tiempo de ejecución inicial
+                        userId,
+                        ip,
+                        ad
+                    ];
+                    const result = await pool.query(queryFth, values);
+                    historialId = result.insertId; // Obtener ID de la inserción
+                }
+                
+                socket.emit('server:historialId', historialId); // Enviar ID al frontend
+                
+                // 📌 TRANSFORMAR LOS DATOS Y CREAR ESTADOS INICIALES
+                console.log("Transformando datos...");
+                const transformedData = transformarDatos(data);
+                console.log('transformados', transformedData, '---------------------------------')
+
+                const procesos = transformedData.map(item => {
+                    const nuevoObjeto = {
+                        opcionSeleccionada: item.opcionSeleccionada,
+                        datos: item.datos,
+                        id: data.cite,
+                        estado: "inicial"
+                    };
+                    
+                    return nuevoObjeto;
+                });
+                
+                // 📌 ACTUALIZAR LA BASE DE DATOS CON PROCESOS INICIALES
+                await pool.query(
+                    `UPDATE historial_respuesta_pdf 
+                    SET json_consultas = ?, tiempo_solucion = ? 
+                    WHERE id_historial_respuesta_pdf = ?`,
+                    [JSON.stringify(procesos), calcularTiempo(startTime), historialId]
+                );
+                let pdf_results = []
+                // 📌 PROCESAR CADA ELEMENTO Y ACTUALIZAR EN CADA PASO
+                await Promise.all(transformedData.map(async (element, i) => {
+                    const id = shortid.generate();
+                    const nuevoReqBody = element;
+                    
+                    console.log(`Procesando elemento para el usuario: ${ad}`);
+                    
+                    const socketSimulado = { emit: function (name, id) { } };
+                    
+                    // 📌 ACTUALIZAR A "procesando" Y REGISTRAR TIEMPO
+                    procesos[i].id = 'RF_' + id;
+                    procesos[i].estado = "procesando";
+                    await pool.query(
+                        `UPDATE historial_respuesta_pdf 
+                        SET json_consultas = ?, tiempo_solucion = ? 
+                        WHERE id_historial_respuesta_pdf = ?`,
+                        [JSON.stringify(procesos), calcularTiempo(startTime), historialId]
+                    );
+                    
+                    // 📌 LLAMAR A LA FUNCIÓN PRINCIPAL (PROCESO REAL)
+                    await controlRRFF(data, nuevoReqBody, userId, id, socketSimulado, io, ad, 'localhost');
+                    
+                    // 📌 ACTUALIZAR A "finalizado" Y REGISTRAR TIEMPO
+                    procesos[i].estado = "finalizado";
+                    await pool.query(
+                        `UPDATE historial_respuesta_pdf 
+                        SET json_consultas = ?, tiempo_solucion = ? 
+                        WHERE id_historial_respuesta_pdf = ?`,
+                        [JSON.stringify(procesos), calcularTiempo(startTime), historialId]
+                    );
+                    let estado_consulta = await pool.query('select * from historialconsulta where nombre = ?', 'RF_'+id)
+                    pdf_results.push(estado_consulta[0])
+                }));
+                
+                //console.log(pdf_results)
+                //procesar los datosy recibitr el html del pdf
+                let html = await results_convert_html(pdf_results, data)
+                //console.log(html)
+                let id_pdf = await pool.query('select id from documents where name = ?;', [data.solicitud_type])
+                await updatePdfWithResults(id_pdf[0].id, historialId, html)
+                // 📌 ACTUALIZAR EL ESTADO GENERAL AL FINALIZAR TODO
+                await pool.query(
+                    `UPDATE historial_respuesta_pdf 
+                    SET estado = ?, tiempo_solucion = ? 
+                    WHERE id_historial_respuesta_pdf = ?`,
+                    ['finalizado', calcularTiempo(startTime), historialId]
+                );
+                
+                console.log("✅ Todos los elementos han sido procesados correctamente.");
+            } catch (error) {
+                console.error("❌ Error procesando los datos:", error);
+            }
+            io.emit('server:1historialId_' + historialId); // Enviar ID al frontend
+        });
+        function calcularTiempo(startTime) {
+            let elapsedTime = Math.floor((Date.now() - startTime) / 1000); // Segundos totales
+            let horas = Math.floor(elapsedTime / 3600);
+            let minutos = Math.floor((elapsedTime % 3600) / 60);
+            let segundos = elapsedTime % 60;
+
+            return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:${String(segundos).padStart(2, '0')}`;
+        }
+
+
+
+        socket.on('cliente:verificarData', async ({ tipo, valor, id }) => {
+            try {
+                let resultado;
+
+                switch (tipo) {
+                    case 'nombre':
+                        resultado = await buscarPorNombre(valor);
+                        break;
+
+                    case 'ci':
+                        resultado = await buscarPorCI(valor);
+                        break;
+
+                    case 'telefono':
+                        resultado = await verificarTelefono(valor);
+                        break;
+
+                    case 'imei':
+                        resultado = await buscarPorIMEI(valor)
+                        break;
+
+                    default:
+                        resultado = { error: "❌ Tipo de búsqueda inválido." };
+                }
+
+                // 📌 Enviar respuesta al frontend con el `id` del input
+                //console.log({ tipo, id, resultado })
+                socket.emit('server:verificarData', { tipo, id, resultado });
+
+            } catch (error) {
+                console.error('❌ Error en la verificación:', error);
+                socket.emit('server:verificarData', { tipo, id, error: "❌ Ocurrió un error al procesar la solicitud." });
+            }
+        });
+
+        socket.on('cliente:verifUser', async (user) => {
+            let existe = await pool.query('select COUNT(a.ad) as user from persona a where a.ad = ?', user)
+            existe[0].user == 0 ? socket.emit('server:usuarioLibre') : socket.emit('server:usuarioUsado');
+        });
+        socket.on('cliente:verifRol', async (rol) => {
+            let existe = await pool.query('select COUNT(a.idRol) as idRol from rol a where a.nombreRol = ?', rol);
+            if (existe[0].idRol == 0) {
+                socket.emit('server:rolLibre');
+            } else {
+                socket.emit('server:rolUsado')
+            }
+        });
+        socket.on('cliente:registrarRol', async (id, rol, fecha) => {
+            await pool.query('insert into rol set ?', { nombreRol: rol });
+            let resul = await pool.query('select rol.nombreRol from rol where rol.nombreRol = ?', rol);
+            await pool.query("insert into historialCambios set accion= 'Crear', cambio = 'Se crea el rol " + rol + "', idPersona=" + id + ", fecha='" + fecha + "';")
+            let nits = await pool.query('SELECT * FROM rol ORDER BY idRol DESC');
+            socket.emit('server:rolRegistrado', resul[0].nombreRol, nits);
+        });
+        socket.on('cliente:eliminarRol', async (id, rol, fecha) => {
+            let persona = await pool.query('select count(*) per from persona where idRol=?', rol)
+            if (persona[0].per > 0) {
+                socket.emit('server:rolDependiente');
+            } else {
+                let oldRol = await pool.query('select nombreRol from rol where idRol=' + rol)
+                await pool.query('DELETE FROM rol WHERE idRol = ?', rol)
+                const nits = await pool.query('SELECT * FROM rol ORDER BY idRol DESC');
+                await pool.query("insert into historialCambios set accion= 'Eliminar', cambio = 'Se elimina el rol " + oldRol[0].nombreRol + "', idPersona=" + id + ", fecha='" + fecha + "';")
+                socket.emit('server:rolRegistrado', null, nits);
+            }
+        });
+        socket.on('cliente:solicitudRRFF', async (json, idPersona, ip, id_reintento) => {
+            console.log('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaas',json)
+            json.opcionesSeleccionadas = json.opcionesSeleccionadas || [];
+            
+            let nuevoReqBody = transformarDatos(json)
+            console.log('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaas', nuevoReqBody)
+            if(nuevoReqBody.length == 0){
+                io.emit('server:solicitudRRFFRELOAD')
+                return
+            }
+            let id = shortid.generate();
+            let ad = await pool.query('select ad from persona where idPersona = ' + idPersona)
+            ad = ad[0].ad
+            console.log(nuevoReqBody)
+            await controlRRFF(json, nuevoReqBody[0], idPersona, id, socket, io, ad, ip)
+            //await controlRRFF(data, nuevoReqBody, userId, id, socketSimulado, io, ad, 'localhost');
+            io.emit('user:grafica', ad);
+        });
+        socket.on('cleinte:newDetalleLlamadas', async (json) => {
+            let datos = json
+
+            if (datos && datos.ticket && datos.telefono && datos.fechaIni && datos.fechaFin && datos.ofuscado && datos.idPersona && datos.ip) {
+                let ofuscado = datos.ofuscado
+                let ofus = datos.ofuscado == '1' ? 'OFUSCADO' : 'COMPLETO'
+                let insert = {
+                    ticket: datos.ticket,
+                    telefono: datos.telefono,
+                    fechaIni: datos.fechaIni,
+                    fechaFin: datos.fechaFin,
+                    idPersona: datos.idPersona,
+                    ip: datos.ip,
+                    ofuscado
+                }
+                //console.log(insert, ofus)
+                let peticionescc = await pool.query('insert into peticionescc set ?', [insert])
+                socket.emit('server:buscandodetallellamadas', peticionescc.insertId)
+                let respuesta = await resultadoOdeco(peticionescc.insertId, insert.fechaIni, insert.fechaFin, [insert.telefono], io, ofus, json.ad, ofuscado)
+                //console.log(respuesta)
+                await pool.query('update peticionescc set resultado = ? where idPeticionescc = ?', [JSON.stringify(respuesta), peticionescc.insertId])
+                io.emit('server:recargardetalledellamadas'+peticionescc.insertId)
+                //res.redirect('/links/detallellamadas/resultado/' + peticionescc.insertId)
+            } else {
+                
+            }
+        });
+    });
+
+    function transformarDatos(objeto) {
+        const resultado = [];
+        const fechaActual = new Date().toISOString().replace("T", " ").split(".")[0]; // Fecha actual formato YYYY-MM-DD HH:mm:ss
+
+        // Agrupar los parámetros dinámicos por tipo (telefono, ci, nombre, imei)
+        const grupos = {}; // { telefono: [...], ci: [...], nombre: [...], imei: [...] }
+
+        Object.keys(objeto).forEach(key => {
+            if (key.startsWith("parametro_")) {
+                const [, tipo] = key.split("_");
+                if (!grupos[tipo]) grupos[tipo] = [];
+                grupos[tipo].push(objeto[key]);
+            }
+        });
+
+        // Armar componentes de configuración desde opcionesIDSeleccionadas
+        const opcionesIDs = objeto.opcionesIDSeleccionadas || [];
+
+        const contiene = (clave) => opcionesIDs.includes(clave);
+
+        // TITULAR = combinación de NOM, DIR, REF
+        const titular = ["NOM", "DIR", "REF"].filter(contiene).join("+");
+
+        // IMEI = si existe "S"
+        const imei = contiene("S") ? "S" : "";
+
+        // OPCIONES = combinación de LLA, SMS, CEL, IMEI
+        const opciones = ["LLA", "SMS", "CEL", "IMEI"].filter(contiene).join("+");
+
+        // refTitulares = si existe NOM_VIVA => poner "NOM"
+        const refTitulares = contiene("NOM_VIVA") ? "NOM" : "";
+
+        // recargas = si existe "RECARGAS" => poner "RECARGAS"
+        const recargas = contiene("RECARGAS") ? "RECARGAS" : "";
+
+        // datos = si existe "DATOS" => poner "DATOS"
+        const datosGSM = contiene("DATOS") ? "DATOS" : "";
+
+        // cel_datos = si existe "CEL_DATOS" => poner "CEL_DATOS"
+        const cel_datos = contiene("CEL_DATOS") ? "CEL_DATOS" : "";
+
+        // Iterar sobre cada grupo de tipoBusqueda
+        Object.entries(grupos).forEach(([tipo, valores]) => {
+            const nuevoObjeto = {
+                opcionSeleccionada: tipo,
+                id: '',
+                datos: valores.join(","),
+                fechaIni: objeto.fechaIni.replace(/-/g, ''),
+                fechaFin: objeto.fechaFin.replace(/-/g, ''),
+                titular,
+                imei,
+                opciones,
+                refTitulares,
+                recargas,
+                datosGSM,
+                cel_datos,
+            };
+            resultado.push(nuevoObjeto);
+        });
+
+        return resultado;
+    }
+
+
+    router.get('/download-pdf/system/:id/:cite', isLoggedIn, async (req, res) => {
+        try {
+            const rows = await pool.query("SELECT pdf_file FROM historial_respuesta_pdf WHERE id_historial_respuesta_pdf = ?", [req.params.id]);
+
+            if (!rows.length || !rows[0].pdf_file) {
+                console.error("PDF no encontrado en la base de datos.");
+                return res.status(404).send('PDF no encontrado');
+            }
+
+            //console.log(`Descargando PDF para el documento ID: ${req.params.id}`);
+
+            res.setHeader('Content-Disposition', 'attachment; filename="'+req.params.cite+'.pdf"');
+            res.setHeader('Content-Type', 'application/pdf');
+            res.send(rows[0].pdf_file);
+        } catch (error) {
+            console.error("Error en descarga de PDF:", error);
+            res.status(500).json({ error: error.message });
+        }
+    });
+    router.get('/view-pdf/:id', isLoggedIn, async (req, res) => {
+        try {
+            const { id } = req.params;
+
+            // 📌 Buscar el PDF en la base de datos
+            const rows = await pool.query("SELECT pdf_file FROM historial_respuesta_pdf WHERE id_historial_respuesta_pdf = ?", [id]);
+
+            if (!rows.length || !rows[0].pdf_file) {
+                return res.status(404).send('PDF no encontrado');
+            }
+
+            // 📌 Configurar la respuesta HTTP para visualizar el PDF en el navegador
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', 'inline; filename="documento.pdf"');
+            res.send(rows[0].pdf_file);
+
+        } catch (error) {
+            console.error("❌ Error al visualizar el PDF:", error.message);
+            res.status(500).json({ error: "Error al recuperar el PDF" });
+        }
+    });
+
+    router.post('/save-pdf', isLoggedIn, async (req, res) => {
+        try {
+            let { data } = req.body;
+            if (typeof data !== 'string') {
+                data = JSON.stringify(data);
+            }
+
+            // Insertar JSON en la base de datos
+            const result = await pool.query("INSERT INTO documents (content) VALUES (?)", [data]);
+            const documentId = result.insertId;
+
+            // Generar el PDF
+            const jsonData = JSON.parse(data);
+
+            let htmlContent = `
+        <html>
+        <head>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    width: 612px;
+                    height: 792px;
+                    margin: 0;
+                    padding: 20px;
+                    position: relative;
+                }
+                .content {
+                    position: relative;
+                    width: 100%;
+                    height: 100%;
+                }
+                .text-box {
+                    position: absolute;
+                    white-space: pre-wrap;
+                    text-align: left;
+                    word-break: break-word;
+                    overflow-wrap: break-word;
+                    display: inline-block;
+                }
+                .image {
+                    position: absolute;
+                }
+                /* Subrayado corregido */
+                .underline {
+                    display: inline;
+                    border-bottom: 1px solid currentColor; /* Usa el color del texto */
+                    padding-bottom: 2px; /* Ajusta para evitar espacio extra */
+                }
+            </style>
+        </head>
+        <body>
+            <div class="content">`;
+
+            jsonData.objects.forEach(obj => {
+                if (obj.type === 'textbox') {
+                    //console.log(obj);
+                    htmlContent += `<div class="text-box" style="
+                    position: absolute;
+                    left: ${obj.left}px;
+                    top: ${obj.top}px;
+                    font-size: ${obj.fontSize}px;
+                    color: ${obj.fill};
+                    text-align: ${obj.textAlign};
+                    font-family: ${obj.fontFamily || 'Arial'};
+                    font-weight: ${obj.fontWeight === 'bold' ? 'bold' : 'normal'};
+                    font-style: ${obj.fontStyle === 'italic' ? 'italic' : 'normal'};
+                    width: ${obj.width}px;
+                    max-width: ${obj.width}px;
+                    ">
+                    <span class="${obj.underline ? 'underline' : ''}">${obj.text.trim()}</span>
+                </div>`;
+                } else if (obj.type === 'image' && obj.src.startsWith('data:image')) {
+                    htmlContent += `<img class="image" src="${obj.src}" style="
+                    left: ${obj.left}px;
+                    top: ${obj.top + 45}px;
+                    width: ${obj.width * obj.scaleX}px;
+                    height: ${obj.height * obj.scaleY}px;
+                ">`;
+                }
+            });
+
+            htmlContent += `</div></body></html>`;
+
+            const browser = await puppeteer.launch();
+            const page = await browser.newPage();
+            await page.setViewport({ width: 612, height: 792 });
+            await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+            await page.evaluate(() => {
+                document.querySelectorAll('.text-box').forEach(el => el.textContent = el.textContent.trim());
+            });
+
+            await page.evaluate(() => {
+                return new Promise(resolve => setTimeout(resolve, 1000));
+            });
+
+            const pdfBuffer = await page.pdf({
+                format: 'letter',
+                printBackground: true,
+                margin: { top: '0mm', right: '20mm', bottom: '20mm', left: '20mm' }
+            });
+
+            await browser.close();
+
+            // Guardar el PDF en la base de datos
+            await pool.query("UPDATE documents SET pdf_file = ? WHERE id = ?", [Buffer.from(pdfBuffer), documentId]);
+
+            res.json({ message: 'Documento y PDF guardados', id: documentId });
+
+        } catch (error) {
+            console.error("Error al guardar el documento y generar el PDF:", error);
+            res.status(500).json({ error: error.message });
+        }
+    });
+    // 📌 Descargar el PDF desde la base de datos
+    router.get('/download-pdf/:id', isLoggedIn, async (req, res) => {
+        try {
+            const rows = await pool.query("SELECT pdf_file FROM documents WHERE id = ?", [req.params.id]);
+
+            if (!rows.length || !rows[0].pdf_file) {
+                console.error("PDF no encontrado en la base de datos.");
+                return res.status(404).send('PDF no encontrado');
+            }
+
+            //console.log(`Descargando PDF para el documento ID: ${req.params.id}`);
+
+            res.setHeader('Content-Disposition', 'attachment; filename="documento.pdf"');
+            res.setHeader('Content-Type', 'application/pdf');
+            res.send(rows[0].pdf_file);
+        } catch (error) {
+            console.error("Error en descarga de PDF:", error);
+            res.status(500).json({ error: error.message });
+        }
+    });
+    // 📌 Recuperar el contenido del PDF desde la base de datos para edición
+    router.get('/generate-pdf/:id', isLoggedIn, async (req, res) => {
+        try {
+            // Obtener el contenido JSON guardado en la base de datos
+            const rows = await pool.query("SELECT content FROM documents WHERE id = ?", [req.params.id]);
+            //console.log(rows.length)
+
+            if (!rows.length || !rows[0].content) {
+                console.error("Contenido no encontrado en la base de datos.");
+                return res.status(404).json({ error: 'Contenido no encontrado' });
+            }
+
+            //console.log(`Recuperando contenido para edición del documento ID: ${req.params.id}`);
+
+            // Enviar el JSON al frontend para reconstrucción en el editor
+            res.json({ content: JSON.parse(rows[0].content) });
+
+        } catch (error) {
+            console.error("Error al recuperar contenido del PDF:", error);
+            res.status(500).json({ error: error.message });
+        }
+    });
+    router.post('/save-edit-pdf/:id', isLoggedIn, async (req, res) => {
+        try {
+            let { data } = req.body;
+            let { id } = req.params;
+
+            if (typeof data !== 'string') {
+                data = JSON.stringify(data);
+            }
+
+            // 📌 Actualizar JSON en la base de datos
+            await pool.query("UPDATE documents SET content = ? WHERE id = ?", [data, id]);
+
+            // 📌 Generar el PDF desde el JSON actualizado
+            const jsonData = JSON.parse(data);
+
+            let htmlContent = `
+        <html>
+        <head>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    width: 612px;
+                    height: 792px;
+                    margin: 0;
+                    padding: 20px;
+                    position: relative;
+                }
+                .content {
+                    position: relative;
+                    width: 100%;
+                    height: 100%;
+                }
+                .text-box {
+                    position: absolute;
+                    white-space: pre-wrap;
+                    text-align: left;
+                    word-break: break-word;
+                    overflow-wrap: break-word;
+                    display: inline-block;
+                }
+                .image {
+                    position: absolute;
+                }
+                .underline {
+                    display: inline;
+                    border-bottom: 1px solid currentColor;
+                    padding-bottom: 2px;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="content">`;
+
+            jsonData.objects.forEach(obj => {
+                if (obj.type === 'textbox') {
+                    htmlContent += `<div class="text-box" style="
+                    position: absolute;
+                    left: ${obj.left}px;
+                    top: ${obj.top}px;
+                    font-size: ${obj.fontSize}px;
+                    color: ${obj.fill};
+                    text-align: ${obj.textAlign};
+                    font-family: ${obj.fontFamily || 'Arial'};
+                    font-weight: ${obj.fontWeight === 'bold' ? 'bold' : 'normal'};
+                    font-style: ${obj.fontStyle === 'italic' ? 'italic' : 'normal'};
+                    width: ${obj.width}px;
+                    max-width: ${obj.width}px;
+                    ">
+                    <span class="${obj.underline ? 'underline' : ''}">${obj.text.trim()}</span>
+                </div>`;
+                } else if (obj.type === 'image' && obj.src.startsWith('data:image')) {
+                    htmlContent += `<img class="image" src="${obj.src}" style="
+                    left: ${obj.left}px;
+                    top: ${obj.top + 45}px;
+                    width: ${obj.width * obj.scaleX}px;
+                    height: ${obj.height * obj.scaleY}px;
+                ">`;
+                }
+            });
+
+            htmlContent += `</div></body></html>`;
+
+            // 📌 Generar el PDF con Puppeteer
+            const browser = await puppeteer.launch();
+            const page = await browser.newPage();
+            await page.setViewport({ width: 612, height: 792 });
+            await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+
+            await page.evaluate(() => {
+                document.querySelectorAll('.text-box').forEach(el => el.textContent = el.textContent.trim());
+            });
+
+            await page.evaluate(() => {
+                return new Promise(resolve => setTimeout(resolve, 1000));
+            });
+
+            const pdfBuffer = await page.pdf({
+                format: 'letter',
+                printBackground: true,
+                margin: { top: '0mm', right: '20mm', bottom: '20mm', left: '20mm' }
+            });
+
+            await browser.close();
+
+            // 📌 Verificar el buffer antes de guardarlo
+            //console.log("Tipo de pdfBuffer:", typeof pdfBuffer);
+            //console.log("¿Es Buffer?:", Buffer.isBuffer(pdfBuffer));
+            //console.log("Tamaño del PDF en bytes:", pdfBuffer.length);
+
+            // 📌 Guardar el PDF en la base de datos (CORREGIDO)
+            await pool.query("UPDATE documents SET pdf_file = ? WHERE id = ?", [Buffer.from(pdfBuffer), id]);
+
+            res.json({ message: 'Documento actualizado y PDF generado', id });
+
+        } catch (error) {
+            console.error("Error al actualizar el documento y generar el PDF:", error);
+            res.status(500).json({ error: error.message });
+        }
+    });
+    router.get('/manage/pdf', isAdmin, async (req, res) => {
+        let pdf = await pool.query('select * from documents')
+        res.render('links/manage-pdf', { pdf });
+    });
+
+    router.get("/descargar-archivos/:nombres/:main/:cite", async (req, res) => {
+        try {
+            const { nombres, main, cite } = req.params;
+            // buscar en bbdd la tabla historial_respuesta_pdf con el id_historial_respuesta_pdf igual a main
+            const historial = await pool.query('select tipo_solicitud, cite, creado from historial_respuesta_pdf where id_historial_respuesta_pdf = ?', main)
+            console.log(main, historial)
+            let nombreRar = cite + '.rar'
+            /*if (historial.length > 0) {
+                const fechaFormateada = new Date(historial[0].creado).toISOString().split('T')[0]; // YYYY-MM-DD
+                nombreRar = `${historial[0].tipo_solicitud}_${historial[0].cite}_${fechaFormateada}.rar`;
+            }*/
+
+
+            const ids = nombres.split(","); // 🔹 Convertir los nombres separados por "," en un array
+            const directoryPath = path.join(__dirname, "../public/img/imgenCliente/");
+            const outputFilePath = path.join(__dirname, "archivos_adjuntos.rar");
+
+            const output = fs.createWriteStream(outputFilePath);
+            const archive = archiver("zip"); // 🔹 Cambiar a "rar" si usas una herramienta compatible con RAR
+
+            // Escuchar eventos de error
+            archive.on("error", (err) => {
+                throw err;
+            });
+
+            archive.pipe(output);
+
+            // 🔹 Buscar archivos que empiecen con cualquier ID recibido en la solicitud
+            fs.readdir(directoryPath, (err, files) => {
+                if (err) {
+                    console.log("❌ Error al leer el directorio:", err);
+                    return res.status(500).send("Error al leer el directorio.");
+                }
+
+                let archivosAgregados = 0;
+
+                files.forEach((file) => {
+                    // Si el archivo comienza con alguno de los IDs
+                    if (ids.some(id => file.startsWith(id))) {
+                        const filePath = path.join(directoryPath, file);
+                        archive.append(fs.createReadStream(filePath), { name: file });
+                        archivosAgregados++;
+                    }
+                });
+
+                if (archivosAgregados === 0) {
+                    return res.status(404).send("No se encontraron archivos para los IDs proporcionados.");
+                }
+
+                archive.finalize();
+            });
+
+            // Enviar el archivo para descarga
+            res.attachment(await nombreRar);
+            archive.pipe(res);
+
+            // Eliminar el archivo una vez enviado
+            res.on("finish", () => {
+                fs.unlink(outputFilePath, (err) => {
+                    if (err) console.error("❌ Error al eliminar el archivo:", err);
+                });
+            });
+
+        } catch (error) {
+            console.error("❌ Error en la generación del archivo:", error);
+            res.status(500).send("Error en la generación del archivo.");
+        }
+    });
+
+
+    /** */
+    router.get('/profile/modify', isLoggedIn, async (req, res) => {
+        res.render('links/index');
+    });
+    router.get('/panel', isAdmin, async (req, res) => {
+        res.render('panel/index');
+    });
+    router.get('/profile/admin/modify', isAdmin, async (req, res) => {
+        let rol = await pool.query('select * from rol;')
+        res.render('panel/profile', { rol });
+    });
+    router.get('/admin/profile/:idPersona', isAdmin, async (req, res) => {
+        const { idPersona } = req.params;
+        let persona = await pool.query('select p.*, r.nombreRol as rol from persona p, rol r where p.idRol=r.idRol and p.idPersona=?;', idPersona)
+        let rol = await pool.query('select * from rol;')
+        res.render('panel/profileUser', { persona: persona[0], rol });
+    });
+    router.post('/admin/profile/:idPersona', isAdmin, async (req, res) => {
+        const { idPersona } = req.params;
+        let { username, rol, fecha } = req.body;
+        let newData = {
+            ad: username,
+            idRol: rol,
+            activo: req.body.activo ? true : false
+        }
+        await pool.query('update persona set ? where idPersona =' + idPersona, [newData])
+        await pool.query("insert into historialCambios set accion= 'Modificar', cambio = 'Se modifica los datos del usuario " + newData.ad + "', idPersona=" + req.user.idPersona + ", fecha='" + fecha + "';")
+        req.flash('success', 'Datos del Usuario modificados')
+        res.redirect('/links/admin/profile/' + idPersona);
+    });
+    router.get('/admin/profile/reset/:idPersona/:fecha', isAdmin, async (req, res) => {
+        const { idPersona, fecha } = req.params;
+        let persona = await pool.query('select * from persona where idPersona = ?;', idPersona)
+        persona = persona[0].ad;
+        let passwordNew = await helpers.encryptPassword(persona);
+        //console.log(passwordNew, idPersona)
+        await pool.query("update persona set password='" + passwordNew + "' where idPersona=" + idPersona)
+        await pool.query("insert into historialCambios set accion= 'Modificar', cambio = 'Se hace reset a la contraseña de " + persona + "', idPersona=" + req.user.idPersona + ", fecha='" + fecha + "';")
+        req.flash('warning', 'La contraseña nueva es Igual que el AD')
+        res.redirect('/links/admin/profile/' + idPersona);
+    });
+    router.get('/panel/roles', isAdmin, async (req, res) => {
+        let rol = await pool.query('select * from rol;')
+        res.render('panel/gestionarRoles', { rol });
+    });
+    router.get('/panel/newuser', isAdmin, async (req, res) => {
+        let tipo = await pool.query('select * from rol;')
+        res.render('auth/signup', { tipo });
+    });
+    router.get('/panel/verusuarios', isAdmin, async (req, res) => {
+        let persona = await pool.query('SELECT p.*, r.nombreRol AS rol, COUNT(h.idHistorialConsulta) AS rrff FROM persona p JOIN rol r ON p.idRol = r.idRol LEFT JOIN historialconsulta h ON h.idPersona = p.idPersona GROUP BY p.idPersona, r.nombreRol order by p.ad asc')
+        res.render('panel/verusuarios', { persona });
+    });
+    router.post('/panel/newuser', isAdmin, async (req, res) => {
+        let { username, rol, fecha } = req.body;
+        let newUser = {
+            ad: username,
+            idRol: rol,
+            activo: req.body.activo ? true : false
+        };
+        newUser.password = await helpers.encryptPassword(username);
+        await pool.query('INSERT INTO persona SET ?', [newUser]);
+        await pool.query("insert into historialCambios set accion= 'Crear', cambio = 'Se crea el usuario " + username + "', idPersona=" + req.user.idPersona + ", fecha='" + fecha + "';")
+        req.flash('success', 'usuario ' + req.body.username + ', registrado exitosamente')
+        res.redirect('/links/panel/newuser');
+    });
+    router.post('/profile/admin/modify', isAdmin, async (req, res) => {
+        let camb = req.body
+        camb.activo = camb.activo ? true : false
+        pool.query('update persona set ? where idPersona = ' + req.user.idPersona, { ad: camb.username, idRol: camb.rol, activo: camb.activo })
+        await pool.query("insert into historialCambios set accion= 'Modificar', cambio = 'Modifica sus propios datos " + req.user.ad + "', idPersona=" + req.user.idPersona + ", fecha='" + camb.fecha + "';")
+        req.flash('success', 'Cambios realizados correctamente')
+        res.redirect('/links/profile/admin/modify');
+    });
+    router.post('/profile/modify', isLoggedIn, async (req, res) => {
+        const validPassword = await helpers.matchPassword(req.body.passwordOld, req.user.password);
+        if (validPassword) {
+            let passwordNew = await helpers.encryptPassword(req.body.password);
+            await pool.query("update persona set password = ? where idPersona=" + req.user.idPersona, [passwordNew]);
+            await pool.query("insert into historialCambios set accion= 'Modificar', cambio = 'Modifica su propia Contraseña " + req.user.ad + "', idPersona=" + req.user.idPersona + ", fecha='" + req.body.fecha + "';")
+            req.flash('success', 'Contraseña Actualizada Correctamente')
+        } else {
+            req.flash('danger', 'Contraseña Actual Incorrecta')
+        }
+        res.redirect('/links/profile/modify');
+    });
+    router.get('/requerimientoFiscal/resultado/:nombre', isLoggedIn, async (req, res) => {
+        const { nombre } = req.params;
+        let resp = await pool.query("select a.*, b.ad from historialconsulta a, persona b where a.nombre = ? and a.idPersona = b.idPersona", nombre)
+        try {
+            resp[0].fecha = convertirFecha(resp[0].fecha);
+            //console.log(resp[0])
+            if(resp[0].estado_proceso != 'Failed'){
+                res.render('links/resultado', { res: resp[0] });
+            }else{
+                let ip = req.ip == '::1' ? 'Ejecutado desde el Servidor Host' : req.ip;
+                if (ip.substr(0, 7) === "::ffff:") {
+                    ip = ip.substr(7)
+                }
+                res.render('links/resultadoFailed', { res: resp[0], dataip:ip });
+            }
+        } catch (error) {
+            res.redirect('/no existe')
+        }
+        //res.render('links/resultado');
+    });
+    router.get('/requerimientoFiscal/respuesta/:id', isLoggedIn, async (req, res) => {
+        try {
+            const { id } = req.params;
+            let [resp] = await pool.query(
+                "SELECT * FROM historial_respuesta_pdf WHERE id_historial_respuesta_pdf = ?;",
+                [id]
+            );
+            let [tipo_solicitud] = await pool.query(
+                "SELECT name_show FROM documents WHERE name = ?;",
+                [resp.tipo_solicitud]
+            );
+
+            if (resp.length == 0) {
+                return res.redirect('/no-existe');
+            }
+            resp.json_consultas = JSON.parse(resp.json_consultas);
+            resp.json_busqueda = JSON.parse(resp.json_busqueda);
+            resp.tipo_solicitud = tipo_solicitud.name_show;
+
+            let consultas = []
+            if (resp.estado == "finalizado"){
+
+                for (let i = 0; i < resp.json_consultas.length; i++) {
+                    const element = resp.json_consultas[i];
+                    let datos = await pool.query('select archivo from historialconsulta where nombre = ?;', [element.id])
+                    consultas.push({
+                        id: element.id,
+                        archivos: datos[0].archivo
+                    })
+                }
+            }
+
+            let ip = req.ip;
+
+            if (!ip || typeof ip !== 'string') {
+                ip = 'Desconocido'; // o algún fallback seguro
+            } else if (ip === '::1') {
+                ip = 'Ejecutado desde el Servidor Host';
+            } else if (ip.startsWith("::ffff:")) {
+                ip = ip.slice(7);
+            }
+
+            res.render('links/respuesta', { id, resp: Buffer.from(JSON.stringify(resp), 'utf8').toString('base64'), consultas: Buffer.from(JSON.stringify(consultas), 'utf8').toString('base64'), resp55: resp, ip });
+        } catch (error) {
+            console.error("❌ Error en la consulta:", error);
+            return res.redirect('/no-existe');
+            //res.status(500).json({ error: "Error en el servidor" });
+        }
+    });
+
+    router.get('/download/:nombre', isLoggedIn, async (req, res) => {
+        const { nombre } = req.params;
+        const directoryPath = path.join(__dirname, '../public/img/imgenCliente/');
+        const outputFilePath = path.join(__dirname, nombre + '.rar'); // Ruta completa al archivo .rar
+        const output = fs.createWriteStream(outputFilePath);
+        const archive = archiver('zip');
+
+        // Escuchar eventos de archivado
+        archive.on('error', (err) => {
+            throw err;
+        });
+
+        // Empaquetar archivos en el archivo rar
+        fs.readdir(directoryPath, (err, files) => {
+            if (err) {
+                return console.log('Unable to scan directory: ' + err);
+            }
+
+            files.forEach((file) => {
+                if (file.startsWith(nombre)) {
+                    const filePath = path.join(directoryPath, file);
+                    archive.append(fs.createReadStream(filePath), { name: file });
+                }
+            });
+            archive.finalize();
+        });
+        res.attachment(nombre + '.rar');
+        archive.pipe(res);
+        archive.pipe(output);  // Esto guardará el archivo en el servidor
+        res.on('finish', function () {
+            fs.unlink(outputFilePath, (err) => {
+                if (err)
+                    console.error('Error al eliminar el archivo:', err)
+            });
+        });
+    });
+    router.get('/historial', isLoggedIn, async (req, res) => {
+        let historial = await pool.query('select * from historialcambios where idPersona = ' + req.user.idPersona + ' order by idHistorialCambios desc')
+        historial.forEach((element, index) => {
+            historial[index].fecha = convertirFecha(element.fecha);
+        })
+        let historialReq = await pool.query(`
+            SELECT a.*,
+                CASE
+                    WHEN c.nombreRol = 'Administrador' THEN 'Administrador'
+                    ELSE NULL
+                END AS nombreRol
+            FROM historialconsulta a, persona b, rol c
+            WHERE a.idPersona = ${req.user.idPersona}
+                AND a.idPersona = b.idPersona
+                AND b.idRol = c.idRol
+            ORDER BY a.idHistorialConsulta DESC;
+        `)
+        historialReq.forEach((element, index) => {
+            historialReq[index].fecha = convertirFecha(element.fecha);
+        })
+        let ad = req.user
+        let cantidad = await pool.query('select count(idHistorialConsulta) cantidad from historialconsulta where idPersona = ' + req.user.idPersona)
+        cantidad = cantidad[0]
+        let cantidad1 = await pool.query('select count(idHistorialCambios) cantidad from historialcambios where idPersona = ' + req.user.idPersona)
+        cantidad1 = cantidad1[0]
+        res.render('links/historial', { historial, historialReq, ad, cantidad, cantidad1 });
+    });
+    router.get('/historial/solicitud', isLoggedIn, async (req, res) => {
+        let historial = await pool.query(`
+            SELECT 
+                id_historial_respuesta_pdf,
+                tipo_solicitud,
+                user,
+                cite,
+                cocite,
+                estado,
+                tiempo_solucion,
+                user_id,
+                creado
+            FROM historial_respuesta_pdf
+            WHERE user_id = ${req.user.idPersona}
+            AND creado >= NOW() - INTERVAL 30 DAY
+            ORDER BY id_historial_respuesta_pdf DESC
+        `);
+
+        historial.forEach((element, index) => {
+            historial[index].creado = convertirFecha(element.creado);
+        })
+        res.render('links/historial_solicitud', { historial, ad: req.user.ad });
+    });
+    const moment = require('moment'); // Asegúrate de tener 'moment' instalado
+
+    router.get('/panel/historial/solicitudes/system/:fini/:ffin', isLoggedIn, async (req, res) => {
+        const { fini, ffin } = req.params;
+
+        // Validación de formato de fecha
+        if (!moment(fini, 'YYYY-MM-DD', true).isValid() || !moment(ffin, 'YYYY-MM-DD', true).isValid()) {
+            return res.status(400).send("Fechas inválidas. Usa formato YYYY-MM-DD.");
+        }
+
+        try {
+            const historial = await pool.query(`
+            SELECT 
+                id_historial_respuesta_pdf,
+                tipo_solicitud,
+                user,
+                cite,
+                cocite,
+                estado,
+                tiempo_solucion,
+                creado
+            FROM historial_respuesta_pdf
+            WHERE DATE(creado) BETWEEN ? AND ?
+            ORDER BY id_historial_respuesta_pdf DESC
+        `, [fini, ffin]);
+
+            historial.forEach((element, index) => {
+                historial[index].creado = convertirFecha(element.creado);
+            });
+
+            res.render('links/historial_solicitud_all', { historial, ad: req.user.ad });
+
+        } catch (error) {
+            console.error("Error al obtener historial:", error);
+            res.status(500).send("Error interno del servidor");
+        }
+    });
+
+    router.get('/panel/historial/sistem', isAdmin, async (req, res) => {
+        //let historial = await pool.query('select * from historialcambios a, persona b where a.idPersona = b.idPersona order by a.idHistorialCambios desc limit 500')
+        /*historial.forEach((element, index) => {
+            historial[index].fecha = convertirFecha(element.fecha);
+        })*/
+        let historialReq = await pool.query(`SELECT a.*, b.ad,
+        CASE
+            WHEN c.nombreRol = 'Administrador' THEN 'Administrador'
+            ELSE NULL
+        END AS nombreRol
+        FROM historialconsulta a, persona b, rol c
+        WHERE a.idPersona = b.idPersona
+            AND b.idRol = c.idRol
+            ORDER BY a.idHistorialConsulta DESC limit 500;
+        `)
+        historialReq.forEach((element, index) => {
+            historialReq[index].fecha = convertirFecha(element.fecha);
+        })
+        /*let cantidad = await pool.query('select count(idHistorialConsulta) cantidad from historialconsulta;')
+        cantidad = cantidad[0]
+        let cantidad1 = await pool.query('select count(idHistorialCambios) cantidad from historialcambios;')
+        cantidad1 = cantidad1[0]*/
+        let ad = req.user.ad
+        res.render('panel/historial', { historialReq, ad });
+    });
+    router.get('/historial/:idPersona', isLoggedIn, async (req, res) => {
+        const { idPersona } = req.params;
+        let historial = await pool.query('select * from historialcambios where idPersona = ' + idPersona + ' order by idHistorialCambios desc')
+        historial.forEach((element, index) => {
+            historial[index].fecha = convertirFecha(element.fecha);
+        })
+        let historialReq = await pool.query(`
+            SELECT a.*,
+                CASE
+                    WHEN c.nombreRol = 'Administrador' THEN 'Administrador'
+                    ELSE NULL
+                END AS nombreRol
+            FROM historialconsulta a, persona b, rol c
+            WHERE a.idPersona = ${idPersona}
+                AND a.idPersona = b.idPersona
+                AND b.idRol = c.idRol
+            ORDER BY a.idHistorialConsulta DESC;
+        `)
+        historialReq.forEach((element, index) => {
+            historialReq[index].fecha = convertirFecha(element.fecha);
+        })
+        let ad = await pool.query('select * from persona where idPersona = ' + idPersona)
+        ad = ad[0]
+        let cantidad = await pool.query('select count(idHistorialConsulta) cantidad from historialconsulta where idPersona = ' + idPersona)
+        cantidad = cantidad[0]
+        let cantidad1 = await pool.query('select count(idHistorialCambios) cantidad from historialcambios where idPersona = ' + idPersona)
+        cantidad1 = cantidad1[0]
+        ////console.log(ad)
+        res.render('links/historial', { historial, historialReq, ad, cantidad, cantidad1 });
+    });
+    router.get('/requerimientoFiscal', isLoggedIn, async (req, res) => {
+        let ip = req.ip == '::1' ? 'Ejecutado desde el Servidor Host' : req.ip;
+        if (ip.substr(0, 7) === "::ffff:") {
+            ip = ip.substr(7)
+        }
+        //console.log(ip)
+        res.render('links/requerimientoFiscal', { dataip: ip });
+    });
+    router.get('/grafica/:queryString', isAdmin, async (req, res) => {
+        let { queryString } = req.params
+        let where = ''
+        if (queryString != 'all') {
+            const queryParams = queryString.split('&').reduce((acc, current) => {
+                const [key, value] = current.split('=');
+                acc[decodeURIComponent(key)] = decodeURIComponent(value);
+                return acc;
+            }, {});
+
+            //console.log(queryParams);
+            if (queryParams.idPersona > 0) {
+
+                where = `where a.idPersona = ${queryParams.idPersona} and a.Fecha >= '${queryParams.fechaIni}' and  a.Fecha <= '${queryParams.fechaFin}'`
+            }
+            //console.log(where)
+        }
+
+        // Ejemplo de datos recibidos
+        const datosRecibidos = await pool.query(`
+            SELECT
+                a.Fecha,
+                b.TotalRRFF NumeroDeFilas,
+                CONCAT('{', GROUP_CONCAT(CONCAT('"', a.ad, '":', a.PersonaCount)), '}') AS PersonasConConteo
+            FROM (
+                SELECT
+                    DATE(h.fecha) AS Fecha,
+                    h.idPersona,
+                    p.ad,
+                    COUNT(*) AS PersonaCount
+                FROM
+                    historialconsulta h
+                JOIN persona p ON h.idPersona = p.idPersona
+                GROUP BY
+                    DATE(h.fecha), h.idPersona, p.ad
+            ) a
+            JOIN (
+                SELECT
+                    DATE(fecha) AS Fecha,
+                    COUNT(*) AS TotalRRFF
+                FROM
+                    historialconsulta
+                GROUP BY
+                    DATE(fecha)
+            ) b ON a.Fecha = b.Fecha ${where}
+            GROUP BY
+                a.Fecha, b.TotalRRFF
+            ORDER BY
+                a.Fecha;
+        `)
+        let datosCompletos = []
+        let users = await pool.query('select * from persona')
+        let fechas = await pool.query('SELECT MIN(fecha) AS inicio, MAX(fecha) AS fin FROM historialconsulta;')
+        if (datosRecibidos.length > 0) {
+
+            const datosAjustados = datosRecibidos.map(d => ({
+                Fecha: d.Fecha.toISOString().split('T')[0],
+                NumeroDeFilas: d.NumeroDeFilas,
+                PersonasConConteo: d.PersonasConConteo
+            }));
+            // Encontrar fechas de inicio y fin
+            const { fechaInicio, fechaFin } = encontrarFechasExtremas(datosAjustados);
+            // Obtener datos completos
+            datosCompletos = completarDatosFaltantes(datosAjustados, fechaInicio, fechaFin);
+            //console.log(datosCompletos)
+            //console.log(fechas, fechas[0].inicio.toISOString().split('T')[0], fechas[0].fin )
+            res.render('links/grafica', { datos: datosCompletos, users, inicio: fechas[0].inicio.toISOString().split('T')[0], fin: fechas[0].fin.toISOString().split('T')[0] });
+        } else {
+            res.render('links/grafica', { datos: [], users, inicio: fechas[0].inicio.toISOString().split('T')[0], fin: fechas[0].fin.toISOString().split('T')[0] });
+
+        }
+    });
+    router.get('/panel/sistema/restaurar', async (req, res) => {
+        let directorio = path.join(__dirname, '..', '/lib/backup');
+        let archivos
+        try {
+            archivos = fs.readdirSync(directorio);
+        } catch (err) {
+            console.error('Error al leer el directorio:', err);
+        }
+        let completo = []
+        archivos.forEach((element) => {
+            if (element != '.gitignore') {
+                completo.push({ archivo: element.split('.sql.en')[0] })
+            }
+        })
+        //console.log(completo)
+        function convertirFecha(fecha) {
+            let partes = fecha.split('-');
+            return `${partes[2]}-${partes[1]}-${partes[0]}`;
+        }
+
+        // Ordenar por fecha más reciente a más antigua
+        completo.sort((a, b) => {
+            let fechaA = new Date(convertirFecha(a.archivo));
+            let fechaB = new Date(convertirFecha(b.archivo));
+            return fechaB - fechaA;
+        });
+
+        //console.log(completo);
+        res.render('panel/backup', { completo })
+    });
+    router.post('/panel/sistema/restaurar', async (req, res) => {
+        //await restoreDatabase(path.join(__dirname, '..', '/lib/backup/backup.sql.enc'))
+        res.redirect('/links/panel/sistema/restaurar')
+    });
+    router.post('/profile/modify/img', upload.single('image'), isLoggedIn, async (req, res) => {
+        if (req.file) {
+            let foto = req.file.filename
+            await pool.query('update persona set foto = "' + foto + '" where idPersona = ' + req.user.idPersona)
+            req.flash('success', 'Foto de Perfil Modificado')
+        }
+        res.redirect('/links/profile/admin/modify')
+    });
+    router.post('/panel/backup', async (req, res) => {
+        //console.log(req.body)
+        await backupDatabase(true)
+        await restoreDatabase(path.join(__dirname, '..', '/lib/backup/' + req.body.nombre + '.sql.enc'))
+        req.flash('success', 'Base de Datos Restaurada a fecha ' + req.body.nombre)
+        res.redirect('/')
+    });
+    router.get('/detallellamadas', isLoggedIn, async (req, res) => {
+        let ip = req.ip;
+        if (ip.substr(0, 7) === "::ffff:") {
+            ip = ip.substr(7)
+        }
+        res.render('links/peticionesCallCenter', { ip })
+    });
+    router.get('/detallellamadas/resultado/:id', isLoggedIn, async (req, res) => {
+        let id = req.params.id
+        let resultado = await pool.query('select a.*, b.ad ad from peticionescc a, persona b where a.idPersona = b.idPersona and a.idPeticionescc = ?', id)
+        resultado = resultado[0]
+        if(resultado){
+            res.render('links/ccResultado', { resultado })
+        }else{
+            res.render('vacio')
+        }
+    });
+    router.get('/historialdetalledellamadas', isLoggedIn, async (req, res) => {
+        let historial = await pool.query('select a.*, b.ad ad from peticionescc a, persona b where a.idPersona = b.idPersona and a.idPersona = ? order by a.idPeticionescc desc', [req.user.idPersona])
+        res.render('links/historialdetalledellamadas', { historial })
+    });
+    router.get('/panel/historialdetallellamadas/sistem', isAdmin, async (req, res) => {
+        let historial = await pool.query('select a.*, b.ad ad from peticionescc a, persona b where a.idPersona = b.idPersona order by a.idPeticionescc desc')
+        res.render('panel/historialdetalledellamadas', { historial })
+    });
+
+
+    function encontrarFechasExtremas(datos) {
+        let fechas = datos.map(item => new Date(item.Fecha));
+        let fechaInicio = new Date(Math.min(...fechas));
+        let fechaFin = new Date(Math.max(...fechas));
+        return {
+            fechaInicio: fechaInicio.toISOString().split('T')[0],
+            fechaFin: fechaFin.toISOString().split('T')[0]
+        };
+    }
+    function obtenerRangoFechas(fechaInicio, fechaFin) {
+        let start = new Date(fechaInicio);
+        let end = new Date(fechaFin);
+        let listaFechas = [];
+
+        while (start <= end) {
+            listaFechas.push(new Date(start).toISOString().split('T')[0]);
+            start.setDate(start.getDate() + 1);
+        }
+
+        return listaFechas;
+    }
+
+    function completarDatosFaltantes(datos, fechaInicio, fechaFin) {
+        //console.log(datos);
+        const rangoFechas = obtenerRangoFechas(fechaInicio, fechaFin);
+        const datosCompletos = [];
+
+        rangoFechas.forEach(fecha => {
+            const datoExistente = datos.find(d => d.Fecha === fecha);
+            if (datoExistente) {
+                datosCompletos.push(datoExistente);
+            } else {
+                datosCompletos.push({ Fecha: fecha, NumeroDeFilas: 0, PersonasConConteo: null });
+            }
+        });
+
+        return datosCompletos;
+    }
+    function formatDateTime(date) {
+        let year = date.getFullYear();
+        let month = date.getMonth() + 1; // getMonth() devuelve un índice basado en 0, así que se suma 1
+        let day = date.getDate();
+        let hours = date.getHours();
+        let minutes = date.getMinutes();
+        let seconds = date.getSeconds();
+
+        // Asegúrate de que todos los componentes de un solo dígito tengan dos dígitos
+        month = month < 10 ? '0' + month : month;
+        day = day < 10 ? '0' + day : day;
+        hours = hours < 10 ? '0' + hours : hours;
+        minutes = minutes < 10 ? '0' + minutes : minutes;
+        seconds = seconds < 10 ? '0' + seconds : seconds;
+
+        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    }
+
+
+    // Ruta para recibir el prompt, ticket y user
+    router.post('/api/generate', async (req, res) => {
+        try {
+            // Extraer datos del cuerpo de la solicitud
+            const { prompt, ticket, user } = req.body;
+
+            // Validar campos requeridos
+            if (!prompt || !ticket || !user) {
+                return res.status(400).json({ error: "Los campos 'prompt', 'ticket', y 'user' son obligatorios." });
+            }
+
+            console.log('Solicitud recibida');
+            const { generateResponse } = require('./funciones/gemini_response');
+
+            // Simulación de procesamiento (puedes reemplazar esto con lógica real)
+            //console.log(prompt, ticket, new Date().toLocaleString(), user);
+            const responseJson = await generateResponse(prompt, ticket, new Date().toLocaleString());
+            //console.log({...req.body, responseJson});
+            const id_User = await pool.query('SELECT idPersona FROM persona WHERE ad = ?', user);
+            
+            if (id_User.length) {
+                const userId = id_User[0].idPersona;
+
+                // Procesar elementos en segundo plano sin bloquear la respuesta
+                (async () => {
+                    try {
+                        const nuevoReqBody = await transformarDatos(responseJson);
+                        //console.log(element)
+                        const ad = user;
+                        
+                        console.log(`Procesando elemento para el usuario: ${ad}`);                   
+                        
+                        const socket = { emit: function (name, id) { } }; // Simulación del socket
+                        // crea un for para el array de objetos de nuevoReqBody
+                        for (const element of nuevoReqBody) {
+                            const id = shortid.generate();
+                            element.id = 'RF_' + id;
+                            await controlRRFF(responseJson, element, userId, id, socket, io, ad, 'localhost');
+                        }
+                        //console.log('------------------------------------', nuevoReqBody)
+                        //await controlRRFF(responseJson, nuevoReqBody, userId, id, socket, io, ad, 'localhost');
+                        /*await Promise.all(responseJson.map(async (element) => {
+                        }));*/
+                        console.log('Todos los elementos fueron procesados en segundo plano.');
+                    } catch (error) {
+                        console.error('Error durante el procesamiento en segundo plano:', error.message);
+                    }
+                })();
+
+                // Responder inmediatamente sin esperar a que el procesamiento termine
+                res.status(200).json({
+                    ticket,
+                    status: 'ok',
+                    responseJson,
+                });
+            } else {
+                return res.status(400).json({ error: `El usuario ${user}, no existe` });
+            }
+        } catch (error) {
+            console.error('Error al procesar la solicitud:', error.message);
+            res.status(500).json({ error: 'Error interno del servidor.' });
+        }
+    });
+    //pagina de prueba visual
+    router.get('/solicitud/new', isLoggedIn, async (req, res) => {
+        let ip = req.ip == '::1' ? 'Ejecutado desde el Servidor Host' : req.ip;
+        if (ip.substr(0, 7) === "::ffff:") {
+            ip = ip.substr(7)
+        }
+        //console.log(ip)
+        let solicitud_type = await pool.query('select name, name_show from documents where status = 1;')
+        res.render('links/solicitud_nueva', { dataip: ip, solicitud_type });
+    });
+
+
+    /** */
+    return router
+}
+
+module.exports = ret

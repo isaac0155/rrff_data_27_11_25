@@ -1,0 +1,367 @@
+<div class="container {{#equals resp55.estado 'error'}}bg-danger{{else}}bg-white{{/equals}} pt-5">
+    <div class="text-center mb-4 bg-white rounded shadow-sm p-2">
+        <h2 class="" style="color:  rgb(92, 52, 158);">📄 Resumen de Solicitud</h2>
+        <p class="lead">Información detallada y consultas asociadas</p>
+        {{#equals resp55.estado 'error'}}
+        <p class="text-danger p-0 m-0">Se ha producido un error al procesar la solicitud.</p>
+        {{/equals}}
+    </div>
+
+    <div class="row">
+        <!-- Información General -->
+        <div class="col-md-6 mt-2">
+            <div class="card compact-card shadow-sm">
+                <div class="card-header text-dark" style="background: rgba(195, 255, 0, 0.374);">
+                    📌 Información General
+                </div>
+                <div class="card-body p-2 small-text">
+                    <p class="m-1"><strong>Tipo:</strong> <span id="tipo_solicitud"></span></p><br>
+                    <p class="m-1"><strong>ID:</strong> <span id="id_solicitud"></span></p>
+                    <p class="m-1"><strong>Departamento:</strong> <span id="departamento"></span></p>
+                    <p class="m-1"><strong>Solicitante:</strong> <span id="solicitante"></span> (<span
+                            id="cargo_solicitante"></span>)</p>
+                    <p class="m-1"><strong>Estado:</strong> <span id="estado" class="badge"></span><strong> Tiempo:</strong> <span id="tiempo_solucion"></span></p>
+                    <p class="m-1"><strong>Creado:</strong> <span id="fecha_creado"></span></p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Fechas (Diseño en 2 columnas dentro de la tarjeta) -->
+        <div class="col-md-3 mt-2">
+            <div class="card compact-card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    📝Solicitud
+                </div>
+                <div class="card-body p-2 small-text">
+                    <div class="row">
+                        <div class="col-12">
+                            <p class="m-1"><strong>Usuario:</strong> <span id="user"></span></p>
+                            <p class="m-1"><strong>IP:</strong> <span id="ip"></span></p>
+                            <p class="m-1"><strong>Busqueda:</strong> <span id="busqueda"></span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mt-2">
+            <div class="card compact-card shadow-sm">
+                <div class="card-header bg-secondary text-white">
+                    📆 Fechas
+                </div>
+                <div class="card-body p-2 small-text">
+                    <div class="row">
+                        <div class="col-12">
+                            <p class="m-1"><strong>Inicio:</strong> <span id="fecha_inicio"></span></p>
+                            <p class="m-1"><strong>Fin:</strong> <span id="fecha_fin"></span></p>
+                            <p class="m-1"><strong>Recibido:</strong> <span id="fecha_solicitud"></span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Consultas en Acordeón -->
+    <div class="accordion mt-3 mb-3" id="consultas_container"></div>
+    {{#equals resp55.estado 'error'}}
+    <div class="col-md-12 shadow-sm bg-white mb-3 rounded border text-center" style="display: flex; flex-direction: column; align-items: center;">
+        <h5 class="m-3">Error al procesar la solicitud</h5>
+        <p class="text-danger">No se pudo generar el documento de respuesta. Por favor, intente nuevamente más tarde.</p>
+        <p class="text-muted">Si el problema persiste, contacte al administrador del sistema.</p>
+        <!-- boton para relanzar la solicitud que cayó en error -->
+        <button id="reintentarBtn" onclick="reintentar()" class="btn btn-warning mb-2">Reintentar Solicitud</button>
+    </div>
+    
+    {{/equals}}
+    
+        <div class="col-md-12 shadow-sm bg-white mb-3 rounded border" {{#equals resp55.estado 'error'}}style="display: none;"{{/equals}}>
+            <h5 class="m-3">Documento de Respuesta</h5>
+            <!--button para descargar el pdf con su id respectuvo-->
+            <div style="display: flex; align-items: center; gap: 10px;" class="mb-3">
+                <button id="descargarPDFBtn" style="display: none;" class="btn btn-success btn-sm">Descargar PDF</button>
+                <button id="descargarArchivosBtn" style="display: none;" class="btn btn-success btn-sm">Descargar Archivos
+                    Adjuntos</button>
+                <a href="/links/view-pdf/{{id}}" style="display:none; margin-top:15px;" id="pdf_pantalla_completa"
+                    target="_blank" class="btn btn-warning btn-sm">Ver PDF en pantalla completa</a>
+            </div>
+        
+            <div id="visual_pdf">
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    <!-- Respuesta -->
+
+</div>
+
+<script>
+    socket.on('server:1historialId_{{id}}', ()=>{
+        //recargar la pagina
+        location.reload();
+    })
+
+	let rawData = `{{{resp}}}`;  // Triple llaves evita escape HTML por Handlebars
+
+	// Limpieza preventiva por si el contenido lleg�� escapado por HTML
+	let base64Clean3 = rawData
+	  .replace(/&#x3D;/g, '=')
+	  .replace(/&#x2F;/g, '/')
+	  .replace(/&quot;/g, '"')
+	  .replace(/&amp;/g, '&');
+
+	// Funci��n para decodificar Base64 a UTF-8 (versi��n 3 con nombre ��nico)
+	function decodeBase64ToUTF8_3(base64String3) {
+	  const binary = atob(base64String3);  // ? usa correctamente el par��metro
+	  const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
+	  const decoder = new TextDecoder('utf-8');
+	  return decoder.decode(bytes);
+	}
+
+	let jsonData = [];
+
+	try {
+	  const decodedText3 = decodeBase64ToUTF8_3(base64Clean3);
+	  jsonData = JSON.parse(decodedText3);
+	  console.log(jsonData);
+	} catch (e) {
+	  console.error("? Error al decodificar o parsear [jsonData]:", e.message);
+	}
+
+
+    if (jsonData.estado == 'finalizado') {
+        let visual_pdf = document.getElementById('visual_pdf');
+
+        // Convertir buffer en Base64
+        let uint8Array = new Uint8Array(jsonData.pdf_file.data);
+        let binaryString = uint8Array.reduce((data, byte) => data + String.fromCharCode(byte), '');
+        let pdfBase64 = btoa(binaryString); // Codificar en Base64
+
+        // Insertar en el iframe
+        visual_pdf.innerHTML = `<iframe src="data:application/pdf;base64,${pdfBase64}" width="100%" height="600px"></iframe>`;
+
+        // Actualizar el botón de descarga del PDF
+        let downloadBtn = document.querySelector('a[href^="/links/download-pdf/"]');
+        if (downloadBtn) {
+            downloadBtn.href = `/links/download-pdf/${jsonData.id}`;
+            downloadBtn.target = "_blank"; // Asegura que se abra en una nueva pestaña
+        }
+        document.getElementById('pdf_pantalla_completa').style.display = '';
+        document.getElementById('descargarPDFBtn').style.display = '';
+        document.getElementById('descargarPDFBtn').style.marginLeft = '15px';
+    }
+
+
+
+    // Llenar datos generales
+    document.getElementById("id_solicitud").textContent = jsonData.id_historial_respuesta_pdf;
+
+    document.getElementById("id_solicitud").innerHTML += ', <strong>Cite: </strong>' + jsonData.cite + ', <strong>Cocite: </strong>' + jsonData.cocite;
+
+    document.getElementById("tipo_solicitud").textContent = jsonData.tipo_solicitud;
+    document.getElementById("departamento").textContent = jsonData.departamento;
+    document.getElementById("solicitante").textContent = jsonData.solicitante;
+    document.getElementById("cargo_solicitante").textContent = jsonData.cargo_solicitante;
+    document.getElementById("estado").textContent = jsonData.estado;
+    document.getElementById("tiempo_solucion").textContent = jsonData.tiempo_solucion;
+    document.getElementById("user").textContent = jsonData.user;
+    document.getElementById("ip").textContent = jsonData.ip;
+    document.getElementById("busqueda").innerHTML = "<br><ul>" +
+            jsonData.json_busqueda.opcionesSeleccionadas
+                .map(opcion => `<li>${opcion}</li>`)
+                .join("") +
+            "</ul>";
+;
+
+
+    // Estilos de estado
+    let estadoBadge = document.getElementById("estado");
+    estadoBadge.classList.add(
+        jsonData.estado === "finalizado" ? "bg-success" : jsonData.estado === "error" ? "bg-danger" : "bg-warning"
+    );
+
+    // Llenar fechas
+    document.getElementById("fecha_creado").textContent =
+    new Date(jsonData.creado).toLocaleString('es-BO', { timeZone: 'UTC', hour12: false });
+
+    document.getElementById("fecha_inicio").textContent =
+    new Date(jsonData.fecha_inicio).toLocaleDateString('es-BO', { timeZone: 'UTC' });
+
+    document.getElementById("fecha_fin").textContent =
+    new Date(jsonData.fecha_fin).toLocaleDateString('es-BO', { timeZone: 'UTC' });
+
+    document.getElementById("fecha_solicitud").textContent =
+    new Date(jsonData.fecha_solicitud).toLocaleDateString('es-BO', { timeZone: 'UTC' });
+
+
+    // Renderizar consultas en acordeón
+    const consultasContainer = document.getElementById("consultas_container");
+    consultasContainer.classList.add("row"); // Reducimos la separación entre tarjetas
+
+    jsonData.json_consultas.forEach((consulta, index) => {
+        let consultaHTML = `
+        <div class="col-12 col-sm-6 col-md-4 col-lg-3 mt-2"> 
+            <div class="card compact-card shadow-sm border">
+                <div class="card-header" style="background: rgba(195, 255, 0, 0.374);">
+                    <span class="status-icon">${consulta.estado === "finalizado" ? "": ""}</span> 
+                    <strong class="small-text">${consulta.opcionSeleccionada.toUpperCase()}</strong>
+                </div>
+                <div class="card-body p-2">
+                    <label class="m-0"><strong>ID:</strong><a href='/links/requerimientoFiscal/resultado/${consulta.id}' target="_blank">${consulta.id}</a> - </label>
+                    <label class="m-0" {{#equals resp55.estado 'error'}}style="display: none;"{{/equals}}>
+                        <span class="badge ${consulta.estado == "finalizado" ? "bg-success" : consulta.estado == "error" ? "bg-danger" : "bg-warning"}">
+                            ${consulta.estado}
+                        </span>
+                    </label> <br>
+                    <a class="w-100 mt-2" data-bs-toggle="collapse" 
+                            data-bs-target="#collapse${index}" aria-expanded="false" aria-controls="collapse${index}">
+                        Ver más...
+                    </a>
+                    <div id="collapse${index}" class="collapse mt-2">
+                        <ul class="list-group list-group-flush small-text">
+                            ${consulta.datos.split(',').join('<br>')}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+        consultasContainer.innerHTML += consultaHTML;
+    });
+
+    
+	let data_archivos = `{{{consultas}}}`;
+
+	// Limpieza m��nima solo si llega escapado HTML (por precauci��n)
+	let base64Clean2 = data_archivos
+	  .replace(/&#x3D;/g, '=')
+	  .replace(/&quot;/g, '"')
+	  .replace(/&#x2F;/g, '/')
+	  .replace(/&amp;/g, '&');
+
+	// Funci��n segura para decodificar Base64 con soporte UTF-8
+	function decodeBase64ToUTF8(base64String2) {
+	  const binary = atob(base64String2); // ? aqu�� est�� corregido
+	  const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
+	  const decoder = new TextDecoder('utf-8');
+	  return decoder.decode(bytes);
+	}
+
+	let archivos;
+
+	try {
+	  const decodedText = decodeBase64ToUTF8(base64Clean2);
+	  archivos = JSON.parse(decodedText);
+	  console.log(archivos);
+
+	  // Continuar flujo
+	  const archivosConAdjuntos = archivos.filter(item => item.archivos > 0);
+	  const idsConArchivos = archivosConAdjuntos.map(item => item.id);
+	} catch (e) {
+	  console.error("? Error al decodificar o parsear:", e.message);
+	}
+
+
+
+
+    // Filtrar IDs que tienen archivos adjuntos y contar archivos
+    let archivosConAdjuntos = archivos.filter(item => item.archivos > 0);
+    let idsConArchivos = archivosConAdjuntos.map(item => item.id);
+    let totalArchivos = archivosConAdjuntos.reduce((sum, item) => sum + item.archivos, 0); // 🔹 Sumar total de archivos
+
+    let btnDescargar = document.getElementById("descargarArchivosBtn");
+    let descargarPDFBtn = document.getElementById("descargarPDFBtn");
+
+    if (idsConArchivos.length > 0) {
+        btnDescargar.style.display = "block";
+        btnDescargar.textContent = `Descargar ${totalArchivos} archivo(s) adjunto(s)`; // 🔹 Actualizar texto del botón
+    }
+
+    btnDescargar.addEventListener("click", () => {
+        let url = `/links/descargar-archivos/${idsConArchivos.join(",")}/${jsonData.id_historial_respuesta_pdf}/${jsonData.cite}`;
+        console.log(url)
+        window.open(url, "_blank"); // 🔹 Abre la descarga en una nueva pestaña
+    });
+
+    descargarPDFBtn.addEventListener("click", () => {
+        let url = `/links/download-pdf/system/${jsonData.id_historial_respuesta_pdf}/${jsonData.cite}`;
+        window.open(url, "_blank"); // 🔹 Abre la descarga en una nueva pestaña
+    });
+    // Codigo para reintentar la solicitud
+    function reintentar() {
+        if(confirm("¿Estás seguro de que deseas reintentar la solicitud?")) {
+            // imprimir en consola el json
+            // se muentra el orden 'datos de busqueda', 'id_historial_respuesta_pdf', 'user', 'ip'
+            // el reintentarBtn debe esta como disabled
+            let reintentarBtn = document.getElementById('reintentarBtn');
+            reintentarBtn.disabled = true;
+
+            console.log(jsonData.json_busqueda, jsonData.id_historial_respuesta_pdf, '{{user.ad}}', '{{ip}}', "Reintentando solicitud...");
+            socket.emit('cliente:enviarData', jsonData.json_busqueda, '{{user.ad}}', '{{ip}}', jsonData.id_historial_respuesta_pdf);
+        }
+    }
+    socket.on('server:historialId', (id) => {
+        window.location.href = "/links/requerimientoFiscal/respuesta/" + id; // Reemplaza con la URL de destino
+    })
+</script>
+
+<style>
+    .bg-primary {
+        background-color: #007bff !important;
+    }
+
+    .bg-secondary {
+        background-color: #6c757d !important;
+    }
+
+    .bg-success {
+        background-color: #28a745 !important;
+    }
+
+    .bg-warning {
+        background-color: #ffc107 !important;
+        color: black !important;
+    }
+
+    .text-primary {
+        color: #007bff !important;
+    }
+
+    .shadow-sm {
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.168) !important;
+    }
+    /* Asegura que las tarjetas sean uniformes */
+    /* Reducción de espacios internos para un diseño más compacto */
+    .compact-card {
+        font-size: 14px;
+        border-radius: 8px;
+        padding: 5px;
+    }
+
+    /* Reducción de margen y padding en la tarjeta */
+    .compact-card .card-header {
+        font-size: 13px;
+        padding: 5px;
+    }
+
+    /* Botón más pequeño y estilizado */
+    .btn-sm {
+        font-size: 12px;
+        padding: 3px 8px;
+    }
+
+    /* Lista de datos más compacta */
+    .list-group-item {
+        font-size: 12px;
+        padding: 3px 6px;
+    }
+
+    /* Espaciado mínimo para tarjetas */
+    .row.g-2 {
+        gap: 10px !important;
+    }
+
+
+</style>

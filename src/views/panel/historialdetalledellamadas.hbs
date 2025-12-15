@@ -1,0 +1,242 @@
+<!-- Incluir jQuery -->
+<script src="https://code.jquery.com/jquery-3.5.1.js"></script>
+
+<!-- Incluir Popper.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+
+<!-- Incluir Bootstrap JS -->
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+
+<!-- Incluye Bootstrap Table JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.18.0/bootstrap-table.min.js"></script>
+
+<!-- Incluye Bootstrap Table CSS -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.18.0/bootstrap-table.min.css">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.2/xlsx.full.min.js"></script>
+
+<div class="container p-4 bg-white">
+    <div class="text-center p-3 mb-4 align-items-center">
+        <h2>Historial de todos los Usuarios <br> Detalle de Llamadas</h2>
+
+    </div>
+    <div class="" style="display:flex; font-size: 14px;">
+        <div class="table-responsive">
+                    <table class="table table-hover table-striped table-bordered fw-normal" id="miTabla">
+                        <thead class="table-dark">
+                            <tr class="">
+                                {{#if user.Administrador}}
+                                {{/if}}
+                                <th>ID</th>
+                                <th>Ticket</th>
+                                <th>Responsable</th>
+                                <th>IP</th>
+                                <th>Fecha de Consulta</th>
+                                <th>Telefono</th>
+                                <th>Fecha Inicio</th>
+                                <th>Fecha Fin</th>
+                                <th>Ofuscado</th>
+                                <th>Ver Resultado</th>
+
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{#each historial}}
+                            {{#equals resultado null}}
+                            <tr class="table-warning">
+                            {{else}}
+                            <tr>
+                            {{/equals}}
+                                <td>{{idPeticionescc}}</td>
+                                <td>{{ticket}}</td>
+                                <td>{{ad}}</td>
+                                <td>{{ip}}</td>
+                                <td>{{fecha}}</td>
+                                <td>{{telefono}}</td>
+                                <td>{{fechaIni}}</td>
+                                <td>{{fechaFin}}</td>
+                                <td>
+                                    {{#equals ofuscado '1'}}
+                                    <p style="word-break:break-all;" class="text-success">OFUSCADO</p>
+                                    {{else}}
+                                    <p style="word-break:break-all;" class="text-danger">COMPLETO</p>
+                                    {{/equals}}
+                                </td>
+                                <td>
+                                    {{#equals resultado '0'}}
+                                    <a href="/links/detallellamadas/resultado/{{idPeticionescc}}" class="text-dark">Sin Resultados</a>
+                                    {{else}}
+                                    <a href="/links/detallellamadas/resultado/{{idPeticionescc}}">Ver Resultados</a>
+                                    {{/equals}}
+                                </td>
+                            </tr>
+                            {{else}}
+                            <tr>
+                                <td>
+                                    Aun no registras cambios en el Historial
+                                </td>
+                            </tr>
+                            {{/each}}
+                        </tbody>
+                    </table>
+                
+        </div>
+    </div>
+
+</div>
+<script>
+    $(function () {
+        $('#miTabla').bootstrapTable({
+            pagination: true,
+            sortable: true,
+            search: true
+        });
+    });
+
+    $(function () {
+        $('#miTabla1').bootstrapTable({
+            pagination: true,
+            sortable: true,
+            search: true
+        });
+    });
+        function exportarTablaAExcel(tableId, nombreArchivo = '', elimi) {
+            var datos = $('#' + tableId).bootstrapTable('getData');
+
+            var datosFiltrados = datos.map(objeto => {
+                var nuevoObjeto = {};
+                Object.keys(objeto).forEach(clave => {
+                    // Verificar si el nombre del atributo es numérico
+                    if (!isNaN(clave)) {
+                        nuevoObjeto[clave] = objeto[clave];
+                    }
+                });
+                return nuevoObjeto;
+            });
+
+            // Convertir los datos filtrados a JSON y mostrarlos en la consola
+            var jsonDatos = JSON.stringify(datosFiltrados, null, 2); // Indenta el JSON para una mejor legibilidad
+            var datos = eliminarAtributoDeDatos(datosFiltrados, elimi);
+
+            var $table = $('#' + tableId);
+            var datosOriginales = $table.bootstrapTable('getData', { unfiltered: true });
+            var encabezados = [];
+            var hojaDatos = [];
+
+            // Obtener los encabezados de la tabla
+            $table.find('thead > tr:first > th').each(function () {
+                var encabezado = $(this).text().trim();
+                encabezados.push(encabezado);
+            });
+
+            // Agregar los encabezados al inicio de los datos
+            //console.log(encabezados);
+            var mapeoNombres = encabezados
+            var datosModificados = cambiarNombresDeAtributos(datos, mapeoNombres);
+            //console.log(datosModificados)
+            // Crear un nuevo libro y una hoja con los datos
+            var libro = XLSX.utils.book_new();
+            var hoja = XLSX.utils.json_to_sheet(datosModificados);
+            XLSX.utils.book_append_sheet(libro, hoja, "Datos");
+
+            // Escribir el libro y descargarlo
+            XLSX.writeFile(libro, nombreArchivo ? nombreArchivo + '.xlsx' : 'export.xlsx');
+        }
+        function cambiarNombresDeAtributos(datos, mapeoNombres) {
+            // Cambiar los nombres de los atributos según el mapeo proporcionado
+            return datos.map(objeto => {
+                var nuevoObjeto = {};
+                Object.keys(objeto).forEach(claveAntigua => {
+                    var claveNueva = mapeoNombres[claveAntigua] || claveAntigua;
+                    nuevoObjeto[claveNueva] = objeto[claveAntigua];
+                });
+                return nuevoObjeto;
+            });
+        }
+        function eliminarAtributoDeDatos(datos, nombreAtributo) {
+            if (nombreAtributo) {
+                // Filtrar los datos, eliminando el atributo especificado
+                return datos.map(objeto => {
+                    var nuevoObjeto = {};
+                    Object.keys(objeto).forEach(clave => {
+                        if (clave !== nombreAtributo) {
+                            nuevoObjeto[clave] = objeto[clave];
+                        }
+                    });
+                    return nuevoObjeto;
+                });
+            } else {
+                return datos
+            }
+        }
+    var btn = document.getElementById('agregar');
+    var invalid = document.getElementById('invalid');
+    var nit = document.getElementById('nit');
+    var contenido = document.querySelector('ol.list-group.list-group-numbered');
+
+    function verificarNit() {
+        nit.value = Number(nit.value);
+        if (nit.value.length > 4) {
+            socket.emit('cliente:verifNit', nit.value);
+        } else {
+            invalid.innerHTML = "NIT muy corto";
+            nit.className = 'form-control is-invalid';
+            btn.disabled = true;
+        }
+        //console.log(nit.value);
+    }
+    function agregarNit() {
+        nit.value = Number(nit.value);
+        socket.emit('cliente:registrarNit', nit.value);
+    }
+    function nitDiv(id, nit, newNit) {
+        const div = document.createElement("li");
+        div.innerHTML = `
+            --> ${nit}
+            <div class="text-end">
+                <button type="button" onclick="eliminar(${id})" class="btn btn-outline-danger" disabled>Eliminar</button>
+            </div>
+        `;
+        if (nit == newNit) {
+            div.className = 'list-group-item list-group-item-success list-group-item-action';
+            div.innerHTML += `Nit nuevo Agregado Exitosamente`
+        } else {
+            div.className = 'list-group-item list-group-item-action';
+        }
+
+        return div;
+    }
+    function eliminar(id) {
+        socket.emit('cliente:eliminarNit', id);
+    }
+
+    //sockets
+    socket.on('server:nitLibre', () => {
+        //invalid.innerHTML = "NIT disponible.";
+        nit.className = 'form-control is-valid';
+        btn.disabled = false;
+    });
+    socket.on('server:nitUsado', () => {
+        invalid.innerHTML = "Este NIT ya EXISTE, usa otro.";
+        nit.className = 'form-control is-invalid';
+        btn.disabled = true;
+    });
+    socket.on('server:nitRegistrado', (nit1, nits) => {
+
+        var span = document.querySelector('.badge.text-bg-danger');
+        if (nit1 == null) {
+            span.style.display = '';
+        } else {
+            span.style.display = 'none';
+        }
+        contenido.innerHTML = "";
+        nits.forEach(async function (element, index) {
+            contenido.append(nitDiv(element.idNit, element.nit, nit1));
+        });
+        nit.value = '';
+        invalid.innerHTML = "NIT muy corto";
+        nit.className = 'form-control is-invalid';
+        btn.disabled = true;
+    });
+</script>
