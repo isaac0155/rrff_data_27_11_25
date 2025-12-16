@@ -30,11 +30,16 @@
             </tr>
         
         </table>
-        <div class="row">
+        <h6 class="card-title text-dark mb-0">🧮 Procedimiento usado</h6>
+        <div class="card-body small">
+            <pre class="bg-light rounded p-3 mb-0"
+                style="white-space: pre; overflow-x: auto;">{{{res.procedimiento_usado}}}</pre>
+        </div>
+        <div class="row"  style="display: none;">
             <div id="data"></div>
         </div>
         {{#if res.resultado}}
-        <div class="mx-auto">
+        <div class="mx-auto"  style="display: none;">
             <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
                 Ya se hizo una solicitud nueva para este RRFF. <br>
                 <a href="/links/requerimientoFiscal/resultado/RF_{{res.resultado}}">Click aquí para ver la solicitud Nueva</a>

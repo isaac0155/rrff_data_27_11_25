@@ -1,124 +1,316 @@
+<style>
+    .rrffHud {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
 
-   <nav class="navbar navbar-expand-lg colorNav">
-        <div class="container">
-            <a class="navbar-brand text-white" href="/">
+    .rrffRow {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+
+    .rrffBlock {
+        width: 180px;
+    }
+
+    /* fijo para que SIEMPRE haya espacio */
+    .rrffTitle {
+        font-size: 12px;
+        opacity: .9;
+        margin-bottom: 4px;
+        line-height: 1.1;
+    }
+
+    /* clave: darle ancho real a la barra */
+    .rrffBar {
+        height: 8px;
+        width: 180px;
+        /* 👈 importante para que se vea */
+        background: rgba(0, 0, 0, .055);
+        border-radius: 999px;
+        overflow: hidden;
+    }
+
+    /* clave: que sea block y pinte dentro */
+    .rrffBarFill {
+        display: block;
+        /* 👈 importante */
+        height: 100%;
+        width: 0%;
+        background: rgba(0, 255, 140, .85);
+        transition: width .25s ease;
+    }
+
+    .rrffBarQueue .rrffBarFill {
+        background: rgba(255, 180, 0, .85);
+    }
+
+    .rrffBarPdf .rrffBarFill {
+        background: rgba(90, 140, 255, .85);
+    }
+
+    /* PDF running */
+    .rrffBarPdfQ .rrffBarFill {
+        background: rgba(160, 120, 255, .85);
+    }
+
+    /* PDF queued */
+</style>
+
+<!-- ... tu navbar igual ... -->
+<nav class="navbar navbar-expand-lg colorNav">
+    <div class="container">
+        <a class="navbar-brand text-white" href="/">
             Datos Nuevatel</a>
-            <button class="navbar-toggler" id="newLinkBtn" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
-                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse " id="navbarNav">
-                <ul class="navbar-nav ms-auto ">
-                    
-                    {{#if user}}
-                    <!-- Contenido para mostrar si el usuario es 'ODECO' o 'Segunda Linea' -->
+        <button class="navbar-toggler" id="newLinkBtn" type="button" data-bs-toggle="collapse"
+            data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse " id="navbarNav">
+            <ul class="navbar-nav ms-auto ">
+
+                {{#if user}}
+                <!-- Contenido para mostrar si el usuario es 'ODECO' o 'Segunda Linea' -->
+                {{#hasAnyRole user "Nominal"}}
+
+                <li class="nav-item">
+                    <a class="nav-link position-relative text-white" id="newLink" href="/links/solicitud/new"
+                        role="button"> Solicitud Nueva
+                    </a>
+                </li>
+                {{else}}
+                {{#hasAnyRole user "ODECO,Segunda Linea"}}
+                {{else}}
+                <li class="nav-item">
+                    <a class="nav-link position-relative text-white" id="newLink" href="/links/solicitud/new"
+                        role="button"> Solicitud Nueva
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link position-relative text-white" id="" href="/links/detallellamadas/" role="button">
+                        <img src="/img/call.png" style="margin-right: -1px; margin-top:-5px" alt="" width="18"
+                            height="18"> Detalle de Llamadas
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link position-relative text-white" id="newLink" href="/links/requerimientoFiscal"
+                        role="button">
+                        <img src="/img/mazo.png" style="margin-right: -1px; margin-top:-5px" alt="" width="18"
+                            height="18"> Consultar un Requerimiento
+                    </a>
+                </li>
+                <!-- Contenido para mostrar si el usuario no tiene ninguno de los roles -->
+                {{/hasAnyRole}}
+                {{/hasAnyRole}}
+
+                <li class="nav-item dropdown text-white">
+                    <a class="nav-link dropdown-toggle text-white" href="#" role="button" data-bs-toggle="dropdown"
+                        aria-expanded="false">
+                        <img src="/img/settings1.png" style="margin-right: -1px; margin-top:-5px" alt="" width="18"
+                            height="18"> Administración
+                    </a>
+                    <ul class="dropdown-menu">
+                        {{#if user.Administrador}}
+                        <li>
+                            <a class="dropdown-item" href="/links/panel" role="button">
+                                <img src="/img/settings.png" style="" alt="" width="18" height="18"> Panel de control
+                            </a>
+                        </li>
+                        {{/if}}
+                        {{#if user}}
+                        {{#hasAnyRole user "ODECO,Segunda Linea"}}
+                        {{else}}
                         {{#hasAnyRole user "Nominal"}}
 
-                                <li class="nav-item">
-                                    <a class="nav-link position-relative text-white" id="newLink" href="/links/solicitud/new" role="button"> Solicitud Nueva
-                                    </a>
-                                </li>
+                        <li>
+                            <a class="dropdown-item" id="" href="/links/historial/solicitud" role="button">
+                                <img src="/img/file.png" style="" alt="" width="18" height="18"> Mi Historial de
+                                Solicitudes
+                            </a>
+                        </li>
                         {{else}}
-                            {{#hasAnyRole user "ODECO,Segunda Linea"}}
-                            {{else}}
-                                <li class="nav-item">
-                                    <a class="nav-link position-relative text-white" id="newLink" href="/links/solicitud/new" role="button"> Solicitud Nueva
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link position-relative text-white" id="" href="/links/detallellamadas/" role="button">
-                                        <img src="/img/call.png" style="margin-right: -1px; margin-top:-5px" alt="" width="18" height="18"> Detalle de Llamadas
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link position-relative text-white" id="newLink" href="/links/requerimientoFiscal" role="button">
-                                        <img src="/img/mazo.png" style="margin-right: -1px; margin-top:-5px" alt="" width="18" height="18"> Consultar un Requerimiento
-                                    </a>
-                                </li>
-                            <!-- Contenido para mostrar si el usuario no tiene ninguno de los roles -->
-                            {{/hasAnyRole}}
+                        <li>
+                            <a class="dropdown-item" id="" href="/links/historial/solicitud" role="button">
+                                <img src="/img/file.png" style="" alt="" width="18" height="18"> Mi Historial de
+                                Solicitudes
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" id="newLink" href="/links/historial" role="button">
+                                <img src="/img/file.png" style="" alt="" width="18" height="18"> Mi Historial de RRFF
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" id="" href="/links/historialdetalledellamadas" role="button">
+                                <img src="/img/file.png" style="" alt="" width="18" height="18">Historial de Detalle de
+                                Llamadas
+                            </a>
+                        </li>
                         {{/hasAnyRole}}
-
-                        <li class="nav-item dropdown text-white">
-                            <a class="nav-link dropdown-toggle text-white" href="#" role="button" data-bs-toggle="dropdown"
-                                aria-expanded="false">
-                                <img src="/img/settings1.png" style="margin-right: -1px; margin-top:-5px" alt="" width="18" height="18">   Administración
-                            </a>
-                            <ul class="dropdown-menu">
-                                {{#if user.Administrador}}
-                                <li>
-                                    <a class="dropdown-item" href="/links/panel" role="button">
-                                        <img src="/img/settings.png" style="" alt="" width="18" height="18"> Panel de control
-                                    </a>
-                                </li>
-                                {{/if}}
-                                {{#if user}}
-                                {{#hasAnyRole user "ODECO,Segunda Linea"}}
-                                {{else}}
-                                {{#hasAnyRole user "Nominal"}}
-
-                                <li>
-                                    <a class="dropdown-item" id="" href="/links/historial/solicitud" role="button">
-                                        <img src="/img/file.png" style="" alt="" width="18" height="18"> Mi Historial de Solicitudes
-                                    </a>
-                                </li>
-                                {{else}}
-                                <li>
-                                    <a class="dropdown-item" id="" href="/links/historial/solicitud" role="button">
-                                        <img src="/img/file.png" style="" alt="" width="18" height="18"> Mi Historial de Solicitudes
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" id="newLink" href="/links/historial" role="button">
-                                        <img src="/img/file.png" style="" alt="" width="18" height="18"> Mi Historial de RRFF
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" id="" href="/links/historialdetalledellamadas" role="button">
-                                        <img src="/img/file.png" style="" alt="" width="18" height="18">Historial de Detalle de Llamadas
-                                    </a>
-                                </li>
-                                {{/hasAnyRole}}
-                                {{/hasAnyRole}}
-                                {{/if}}
-                            </ul>
-                        </li>
-                        <li class="nav-item dropdown text-white">
-                            <a class="nav-link dropdown-toggle text-white" href="#" role="button" data-bs-toggle="dropdown"
-                                aria-expanded="false">
-                                {{#if user.foto}}
-                                <img src="/img/profiles/{{user.foto}}" class="rounded-circle"  style="margin-left: -5px; margin-top:-3px" alt="" width="18" height="18">
-                                {{else}}  
-                                <img src="https://i.ibb.co/sy5YrsX/user.png" class="rounded-circle"  style="margin-left: -5px; margin-top:-3px" alt="" width="18" height="18">
-                                {{/if}}
-                                {{user.ad}}
-                            </a>
-                            <ul class="dropdown-menu">
-                                <li>
-                                    <a class="dropdown-item" href="/profile" role="button">
-                                        <img src="/img/user2.png" style="" alt="" width="18" height="18"> Mi Perfil
-                                    </a>
-                                </li>
-                                <li>
-                                    <hr class="dropdown-divider">
-                                </li>
-                                <li>
-                                    <a class="dropdown-item text-danger" href="/logout" role="button">
-                                        <img src="/img/logout.png" style="" alt="" width="18" height="18"> Cerrar Sesión
-                                    </a>
-                                </li>
-                            </ul>
-                        </li>
-
-
-                    {{else}}
-                        <li class="nav-item">
-                            <a class="nav-link text-white" href="/signin" role="button">
-                                Iniciar Sesión
+                        {{/hasAnyRole}}
+                        {{/if}}
+                    </ul>
+                </li>
+                <li class="nav-item dropdown text-white">
+                    <a class="nav-link dropdown-toggle text-white" href="#" role="button" data-bs-toggle="dropdown"
+                        aria-expanded="false">
+                        {{#if user.foto}}
+                        <img src="/img/profiles/{{user.foto}}" class="rounded-circle"
+                            style="margin-left: -5px; margin-top:-3px" alt="" width="18" height="18">
+                        {{else}}
+                        <img src="https://i.ibb.co/sy5YrsX/user.png" class="rounded-circle"
+                            style="margin-left: -5px; margin-top:-3px" alt="" width="18" height="18">
+                        {{/if}}
+                        {{user.ad}}
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li>
+                            <a class="dropdown-item" href="/profile" role="button">
+                                <img src="/img/user2.png" style="" alt="" width="18" height="18"> Mi Perfil
                             </a>
                         </li>
-                    {{/if}}
-                </ul>
-            </div>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
+                        <li>
+                            <a class="dropdown-item text-danger" href="/logout" role="button">
+                                <img src="/img/logout.png" style="" alt="" width="18" height="18"> Cerrar Sesión
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+
+                {{else}}
+                <li class="nav-item">
+                    <a class="nav-link text-white" href="/signin" role="button">
+                        Iniciar Sesión
+                    </a>
+                </li>
+                {{/if}}
+            </ul>
         </div>
-    </nav>
+    </div>
+</nav>
+{{#if user}}
+
+<div class="container align-items-center justify-content-center d-flex mt-2 mb-2">
+    {{!-- Limiter HUD --}}
+
+    <div class="rrffHud p-1 rounded me-3 d-none d-lg-flex" style="background-color:white;">
+        <div class="rrffRow">
+
+            <!-- RRFF -->
+            <div class="rrffBlock">
+                <div class="rrffTitle">RRFF en proceso: <b id="rrffRunningTxt">0</b></div>
+                <div class="rrffBar">
+                    <span id="rrffRunningBar" class="rrffBarFill"></span>
+                </div>
+            </div>
+
+            <div class="rrffBlock">
+                <div class="rrffTitle">RRFF en cola: <b id="rrffQueuedTxt">0</b></div>
+                <div class="rrffBar rrffBarQueue">
+                    <span id="rrffQueuedBar" class="rrffBarFill"></span>
+                </div>
+            </div>
+
+            <!-- PDF -->
+            <div class="rrffBlock">
+                <div class="rrffTitle">PDF en proceso: <b id="pdfRunningTxt">0</b></div>
+                <div class="rrffBar rrffBarPdf">
+                    <span id="pdfRunningBar" class="rrffBarFill"></span>
+                </div>
+            </div>
+
+            <div class="rrffBlock">
+                <div class="rrffTitle">PDF en cola: <b id="pdfQueuedTxt">0</b></div>
+                <div class="rrffBar rrffBarPdfQ">
+                    <span id="pdfQueuedBar" class="rrffBarFill"></span>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    {{/if}}
+</div>
+
+
+<script>
+    const $ = (id) => document.getElementById(id);
+
+    const clampPct = (n) => {
+        n = Number(n);
+        if (!Number.isFinite(n)) n = 0;
+        return Math.max(0, Math.min(100, n));
+    };
+
+    const setText = (id, v) => { const el = $(id); if (el) el.textContent = v; };
+    const setWidth = (id, pct) => { const el = $(id); if (el) el.style.width = clampPct(pct) + '%'; };
+    const setBg = (id, bg) => { const el = $(id); if (el) el.style.background = bg; };
+
+    function pctFromCounts(running, max) {
+        max = Math.max(1, Number(max || 1));
+        return (Number(running || 0) / max) * 100;
+    }
+
+    function pctFromQueue(queued, queueMax) {
+        queueMax = Math.max(1, Number(queueMax || 20));
+        return (Number(queued || 0) / queueMax) * 100;
+    }
+
+    async function refreshLimiterHUD() {
+        try {
+            const r = await fetch('/links/limiter-metrics', { cache: 'no-store' });
+            const j = await r.json();
+            if (!j || !j.ok) return;
+
+            // ===== RRFF =====
+            const rrff = j.rrff || {};
+            const rrffRunning = Number(rrff.running ?? 0);
+            const rrffMax = Number(rrff.max ?? 5);
+            const rrffQueued = Number(rrff.queued ?? 0);
+            const rrffQueueMax = Number(rrff.queue_bar_max ?? 20);
+
+            setText('rrffRunningTxt', `${rrffRunning}`);
+            setText('rrffQueuedTxt', `${rrffQueued}`);
+
+            // si tu endpoint ya manda running_pct/queued_pct úsalo; si no, lo calculo
+            const rrffRunningPct = (rrff.running_pct != null) ? Number(rrff.running_pct) : pctFromCounts(rrffRunning, rrffMax);
+            const rrffQueuedPct = (rrff.queued_pct != null) ? Number(rrff.queued_pct) : pctFromQueue(rrffQueued, rrffQueueMax);
+
+            setWidth('rrffRunningBar', rrffRunningPct);
+            setWidth('rrffQueuedBar', rrffQueuedPct);
+
+            // rojo si saturado
+            setBg('rrffRunningBar', (rrffRunning >= rrffMax) ? 'rgba(255, 129, 0)' : 'rgba(0,255,140,.85)');
+
+            // ===== PDF =====
+            const pdf = j.pdf || {}; // <-- tu endpoint debe mandar esto
+            const pdfRunning = Number(pdf.running ?? 0);
+            const pdfMax = Number(pdf.max ?? 1);
+            const pdfQueued = Number(pdf.queued ?? 0);
+            const pdfQueueMax = Number(pdf.queue_bar_max ?? 20);
+
+            setText('pdfRunningTxt', `${pdfRunning}`);
+            setText('pdfQueuedTxt', `${pdfQueued}`);
+
+            const pdfRunningPct = (pdf.running_pct != null) ? Number(pdf.running_pct) : pctFromCounts(pdfRunning, pdfMax);
+            const pdfQueuedPct = (pdf.queued_pct != null) ? Number(pdf.queued_pct) : pctFromQueue(pdfQueued, pdfQueueMax);
+
+            setWidth('pdfRunningBar', pdfRunningPct);
+            setWidth('pdfQueuedBar', pdfQueuedPct);
+
+            // rojo si saturado
+            setBg('pdfRunningBar', (pdfRunning >= pdfMax) ? 'rgba(255, 129, 0)' : 'rgba(90,140,255,.85)');
+
+        } catch (e) {
+            // no rompas el navbar
+        }
+    }
+
+    refreshLimiterHUD();
+    setInterval(refreshLimiterHUD, 1000);
+</script>

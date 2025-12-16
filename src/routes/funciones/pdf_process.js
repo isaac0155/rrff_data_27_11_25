@@ -249,9 +249,11 @@ async function updatePdfWithResults(pdfId, historialId, htmlContent) {
         await pool.query("UPDATE historial_respuesta_pdf SET pdf_file = ? WHERE id_historial_respuesta_pdf = ?", [Buffer.from(newPdfBuffer), historialId]);
 
         console.log(`✅ PDF actualizado exitosamente y guardado en historial_respuesta_pdf con ID ${historialId}`);
+        return true;
 
     } catch (error) {
         console.error("❌ Error al actualizar el PDF:", error.message);
+        return error;
     }
 }
 

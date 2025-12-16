@@ -41,7 +41,8 @@
                     <p class="card-text">Opciones para las Solicitudes en el sistema.</p>
                     <a id="btnHistorial" class="btn btn-success">Historial</a>
 
-                    <a href="/links/manage/pdf" class="btn btn-dark">Gestion PDFs</a>
+                    <a href="/links/manage/pdf" class="btn btn-dark">Gestion PDFs</a><br>
+                    <button onclick="confirm1()" class="btn btn-white btn-sm">Reinicar Cookies</button>
                     <!--<a class="btn btn-warning" href="/links/grafica/all">Grafico Estadistico</a><br> -->
                 </div>
             </div>
@@ -92,4 +93,11 @@
         const link = `/links/panel/historial/solicitudes/system/${fini}/${ffin}`;
         document.getElementById('btnHistorial').href = link;
     });
+    function confirm1() {
+        if (confirm("¿Estás seguro de reiniciar las cookies del sistema?")) {
+            socket.emit('resetCookies');
+            //recargar pagina
+            //location.reload();
+        }
+    }
 </script>

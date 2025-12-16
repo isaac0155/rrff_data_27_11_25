@@ -2,8 +2,17 @@
     <div class="text-center mb-4 bg-white rounded shadow-sm p-2">
         <h2 class="" style="color:  rgb(92, 52, 158);">📄 Resumen de Solicitud</h2>
         <p class="lead">Información detallada y consultas asociadas</p>
+        {{#equals resp55.estado 'pendiente'}}
+            {{#if user.Administrador}}
+            <button class="btn btn-warning" onclick="match_error()">Pausar proceso</button>
+            {{/if}}
+        {{/equals}}
+        {{#if user.Administrador}}
+        <button class="btn btn-danger btn-sm" onclick="delete_process()">Eliminar proceso</button>
+        {{/if}}
         {{#equals resp55.estado 'error'}}
         <p class="text-danger p-0 m-0">Se ha producido un error al procesar la solicitud.</p>
+        <p class="text-danger p-0 m-0">{{resp55.json_busqueda.error}}</p>
         {{/equals}}
     </div>
 
@@ -63,16 +72,19 @@
 
     <!-- Consultas en Acordeón -->
     <div class="accordion mt-3 mb-3" id="consultas_container"></div>
-    {{#equals resp55.estado 'error'}}
-    <div class="col-md-12 shadow-sm bg-white mb-3 rounded border text-center" style="display: flex; flex-direction: column; align-items: center;">
-        <h5 class="m-3">Error al procesar la solicitud</h5>
-        <p class="text-danger">No se pudo generar el documento de respuesta. Por favor, intente nuevamente más tarde.</p>
-        <p class="text-muted">Si el problema persiste, contacte al administrador del sistema.</p>
-        <!-- boton para relanzar la solicitud que cayó en error -->
-        <button id="reintentarBtn" onclick="reintentar()" class="btn btn-warning mb-2">Reintentar Solicitud</button>
-    </div>
-    
-    {{/equals}}
+    <!-- solo si es usuario admin -->
+    {{#if user.Administrador}}
+        {{#equals resp55.estado 'error'}}
+        <div class="col-md-12 shadow-sm bg-white mb-3 rounded border text-center" style="display: flex; flex-direction: column; align-items: center;">
+            <h5 class="m-3">Error al procesar la solicitud</h5>
+            <p class="text-danger">No se pudo generar el documento de respuesta. Por favor, intente nuevamente más tarde.</p>
+            <p class="text-muted">Si el problema persiste, contacte al administrador del sistema.</p>
+            <!-- boton para relanzar la solicitud que cayó en error -->
+            <button id="reintentarBtn" onclick="reintentar()" class="btn btn-warning mb-2">Reintentar Solicitud</button>
+        </div>
+        {{/equals}}
+    {{/if}}
+
     
         <div class="col-md-12 shadow-sm bg-white mb-3 rounded border" {{#equals resp55.estado 'error'}}style="display: none;"{{/equals}}>
             <h5 class="m-3">Documento de Respuesta</h5>
@@ -102,6 +114,17 @@
         //recargar la pagina
         location.reload();
     })
+
+    function match_error(){
+        if(confirm("¿Estás seguro de que deseas pausar el proceso de esta solicitud?")){
+            socket.emit('cliente:match_error', {{resp55.id_historial_respuesta_pdf}});
+        }
+    }
+    function delete_process(){
+        if(confirm("¿Estás seguro de que deseas eliminar este proceso? Esta acción no se puede deshacer.")){
+            socket.emit('cliente:delete_process', {{resp55.id_historial_respuesta_pdf}});
+        }
+    }
 
 	let rawData = `{{{resp}}}`;  // Triple llaves evita escape HTML por Handlebars
 
@@ -134,24 +157,42 @@
     if (jsonData.estado == 'finalizado') {
         let visual_pdf = document.getElementById('visual_pdf');
 
-        // Convertir buffer en Base64
-        let uint8Array = new Uint8Array(jsonData.pdf_file.data);
-        let binaryString = uint8Array.reduce((data, byte) => data + String.fromCharCode(byte), '');
-        let pdfBase64 = btoa(binaryString); // Codificar en Base64
+        const dataArr = jsonData?.pdf_file?.data;
 
-        // Insertar en el iframe
-        visual_pdf.innerHTML = `<iframe src="data:application/pdf;base64,${pdfBase64}" width="100%" height="600px"></iframe>`;
+        // 1) Aún no creado (NULL)
+        if (!dataArr) {
+            visual_pdf.innerHTML = `<div class="alert alert-info">⏳ PDF aún no generado</div>`;
+            document.getElementById('pdf_pantalla_completa').style.display = 'none';
+            document.getElementById('descargarPDFBtn').style.display = 'none';
+        } else {
+            // 2) Purgado por regla (1 byte: 0x00)
+            const isPurged = Array.isArray(dataArr) && dataArr.length === 1 && dataArr[0] === 0;
 
-        // Actualizar el botón de descarga del PDF
-        let downloadBtn = document.querySelector('a[href^="/links/download-pdf/"]');
-        if (downloadBtn) {
-            downloadBtn.href = `/links/download-pdf/${jsonData.id}`;
-            downloadBtn.target = "_blank"; // Asegura que se abra en una nueva pestaña
+            if (isPurged) {
+                visual_pdf.innerHTML = `<div class="alert alert-warning">📄 PDF eliminado por regla de retención de 28 días.</div>`;
+                document.getElementById('pdf_pantalla_completa').style.display = 'none';
+                document.getElementById('descargarPDFBtn').style.display = 'none';
+            } else {
+                // 3) PDF existe -> tu lógica original
+                let uint8Array = new Uint8Array(dataArr);
+                let binaryString = uint8Array.reduce((data, byte) => data + String.fromCharCode(byte), '');
+                let pdfBase64 = btoa(binaryString);
+
+                visual_pdf.innerHTML = `<iframe src="data:application/pdf;base64,${pdfBase64}" width="100%" height="600px"></iframe>`;
+
+                let downloadBtn = document.querySelector('a[href^="/links/download-pdf/"]');
+                if (downloadBtn) {
+                    downloadBtn.href = `/links/download-pdf/${jsonData.id}`;
+                    downloadBtn.target = "_blank";
+                }
+
+                document.getElementById('pdf_pantalla_completa').style.display = '';
+                document.getElementById('descargarPDFBtn').style.display = '';
+                document.getElementById('descargarPDFBtn').style.marginLeft = '15px';
+            }
         }
-        document.getElementById('pdf_pantalla_completa').style.display = '';
-        document.getElementById('descargarPDFBtn').style.display = '';
-        document.getElementById('descargarPDFBtn').style.marginLeft = '15px';
     }
+
 
 
 
@@ -184,7 +225,7 @@
 
     // Llenar fechas
     document.getElementById("fecha_creado").textContent =
-    new Date(jsonData.creado).toLocaleString('es-BO', { timeZone: 'UTC', hour12: false });
+    new Date(jsonData.creado).toLocaleString('es-BO');
 
     document.getElementById("fecha_inicio").textContent =
     new Date(jsonData.fecha_inicio).toLocaleDateString('es-BO', { timeZone: 'UTC' });

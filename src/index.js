@@ -16,6 +16,9 @@ const { PORT } = require('./config');
 const eliminarArchivosAntiguos = require('./lib/config/deleteFiles');
 const { backupDatabase, restoreDatabase, prueba } = require('./lib/config/backupMySQL');
 const pool = require('./database.js');
+const { initial_process, solicitud_ITC } = require('./routes/funciones/rrff/index');
+const { Socket } = require('dgram');
+
 
 // Inicializaciones
 const app = express();
@@ -86,29 +89,98 @@ setupSessionMiddleware(app).then(sessionMiddleware => {
 
     app.use(express.static(path.join(__dirname, 'public')));
     app.use(require('./routes/autentication'));
-    app.use('/links', require('./routes/links')(io));
+    app.use('/links', require('./routes/links')(io, initial_process, solicitud_ITC));
     app.use(require('./routes/index'));
 
     schedule.scheduleJob('0 4 * * *', function () {
-        console.log("Revisar archivos pasados");
         eliminarArchivosAntiguos();
+        console.log("Revisar archivos pasados");
         console.log("Backup de Base de Datos");
         backupDatabase(false);
     });
 
-    setTimeout(function () {
+    // Reintentar procesos fallidos automáticamente al iniciar el servidor
+    let process_failed_automatic;
+    /*
+    setTimeout(async function () {
         io.emit('server:initialice_server', true);
+
+        const socketSimulado = { emit: function () { } };
+
+        for (const element of process_failed_automatic) {
+            try {
+                console.log(
+                    'Muestra de dantos antes de enviar',
+                    element.json_busqueda,
+                    false,
+                    'host',
+                    element.id_historial_respuesta_pdf,
+                    io,
+                    socketSimulado
+                );
+
+                await initial_process(
+                    JSON.parse(element.json_busqueda),
+                    false,
+                    'host',
+                    element.id_historial_respuesta_pdf,
+                    io,
+                    socketSimulado
+                );
+
+                console.log('🔄 Reintentando proceso ID:', element.id_historial_respuesta_pdf);
+            } catch (err) {
+                console.error('❌ Error reintentando ID:', element.id_historial_respuesta_pdf, err);
+            }
+        }
+    }, 3000);*/
+
+    setTimeout(async function () {
+        io.emit('server:initialice_server', true);
+
+        const socketSimulado = { emit: function () { } };
+
+        const tasks = process_failed_automatic.map((element) => (async () => {
+            try {
+                console.log('📌 Lanzando:', element.id_historial_respuesta_pdf);
+
+                await initial_process(
+                    JSON.parse(element.json_busqueda),
+                    false,
+                    'host',
+                    element.id_historial_respuesta_pdf,
+                    io,
+                    socketSimulado
+                );
+
+                console.log('✅ Reintentado OK:', element.id_historial_respuesta_pdf);
+                return { id: element.id_historial_respuesta_pdf, ok: true };
+            } catch (err) {
+                console.error('❌ Reintentado FAIL:', element.id_historial_respuesta_pdf, err);
+                return { id: element.id_historial_respuesta_pdf, ok: false, error: err?.message };
+            }
+        })());
+
+        const results = await Promise.allSettled(tasks);
+        console.log('🏁 Reintentos finalizados:', results.length);
     }, 3000);
 
+
+
+    
     const dbConfig = require('./dataBaseOracle');
     const dbConfig2 = require('./oracleDbService2');
-
+    
+    // Inicialización de pools de conexiones y arranque del servidor
+    // Marcamos como 'error' los procesos pendientes de PDF y consultas ODB en 'Running'
     (async () => {
         try {
             await pool.query("update historial_respuesta_pdf set estado = 'error' where estado = 'pendiente';");
             await dbConfig.initialize();
             await dbConfig2.initializeODB();
             await pool.query("update historialconsulta set estado_proceso = 'Failed' where estado_proceso = 'Running';");
+            
+            process_failed_automatic = await pool.query('select * from historial_respuesta_pdf where estado = "error";');
 
             Server.listen(PORT, () => {
                 console.log('🚀 Servidor en el puerto', PORT);

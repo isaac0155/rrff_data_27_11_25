@@ -69,6 +69,12 @@ helpers.hasAnyRole = function (user, roles, options) {
     var hasRole = rolesArray.some(role => user.rol === role.trim()); // Verifica si alguno de los roles coincide
     return hasRole ? options.fn(this) : options.inverse(this);
 };
+helpers.pdfEstado = function (pdf_file) {
+    if (!pdf_file) return 'PENDING';
+    const data = pdf_file.data;
+    if (Array.isArray(data) && data.length === 1 && data[0] === 0) return 'PURGED';
+    return 'READY';
+};
 
 
 module.exports = helpers;
