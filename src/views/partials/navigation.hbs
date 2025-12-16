@@ -204,14 +204,14 @@
 
             <!-- RRFF -->
             <div class="rrffBlock">
-                <div class="rrffTitle">RRFF en proceso: <b id="rrffRunningTxt">0</b></div>
+                <div class="rrffTitle">Solicitud en proceso: <b id="rrffRunningTxt">0</b></div>
                 <div class="rrffBar">
                     <span id="rrffRunningBar" class="rrffBarFill"></span>
                 </div>
             </div>
 
             <div class="rrffBlock">
-                <div class="rrffTitle">RRFF en cola: <b id="rrffQueuedTxt">0</b></div>
+                <div class="rrffTitle">Solicitud en cola: <b id="rrffQueuedTxt">0</b></div>
                 <div class="rrffBar rrffBarQueue">
                     <span id="rrffQueuedBar" class="rrffBarFill"></span>
                 </div>
@@ -234,83 +234,82 @@
 
         </div>
     </div>
+    <script>
+        const $ = (id) => document.getElementById(id);
+
+        const clampPct = (n) => {
+            n = Number(n);
+            if (!Number.isFinite(n)) n = 0;
+            return Math.max(0, Math.min(100, n));
+        };
+
+        const setText = (id, v) => { const el = $(id); if (el) el.textContent = v; };
+        const setWidth = (id, pct) => { const el = $(id); if (el) el.style.width = clampPct(pct) + '%'; };
+        const setBg = (id, bg) => { const el = $(id); if (el) el.style.background = bg; };
+
+        function pctFromCounts(running, max) {
+            max = Math.max(1, Number(max || 1));
+            return (Number(running || 0) / max) * 100;
+        }
+
+        function pctFromQueue(queued, queueMax) {
+            queueMax = Math.max(1, Number(queueMax || 20));
+            return (Number(queued || 0) / queueMax) * 100;
+        }
+
+        async function refreshLimiterHUD() {
+            try {
+                const r = await fetch('/links/limiter-metrics', { cache: 'no-store' });
+                const j = await r.json();
+                if (!j || !j.ok) return;
+
+                // ===== RRFF =====
+                const rrff = j.rrff || {};
+                const rrffRunning = Number(rrff.running ?? 0);
+                const rrffMax = Number(rrff.max ?? 5);
+                const rrffQueued = Number(rrff.queued ?? 0);
+                const rrffQueueMax = Number(rrff.queue_bar_max ?? 20);
+
+                setText('rrffRunningTxt', `${rrffRunning}`);
+                setText('rrffQueuedTxt', `${rrffQueued}`);
+
+                // si tu endpoint ya manda running_pct/queued_pct úsalo; si no, lo calculo
+                const rrffRunningPct = (rrff.running_pct != null) ? Number(rrff.running_pct) : pctFromCounts(rrffRunning, rrffMax);
+                const rrffQueuedPct = (rrff.queued_pct != null) ? Number(rrff.queued_pct) : pctFromQueue(rrffQueued, rrffQueueMax);
+
+                setWidth('rrffRunningBar', rrffRunningPct);
+                setWidth('rrffQueuedBar', rrffQueuedPct);
+
+                // rojo si saturado
+                setBg('rrffRunningBar', (rrffRunning >= rrffMax) ? 'rgba(255, 129, 0)' : 'rgba(0,255,140,.85)');
+
+                // ===== PDF =====
+                const pdf = j.pdf || {}; // <-- tu endpoint debe mandar esto
+                const pdfRunning = Number(pdf.running ?? 0);
+                const pdfMax = Number(pdf.max ?? 1);
+                const pdfQueued = Number(pdf.queued ?? 0);
+                const pdfQueueMax = Number(pdf.queue_bar_max ?? 20);
+
+                setText('pdfRunningTxt', `${pdfRunning}`);
+                setText('pdfQueuedTxt', `${pdfQueued}`);
+
+                const pdfRunningPct = (pdf.running_pct != null) ? Number(pdf.running_pct) : pctFromCounts(pdfRunning, pdfMax);
+                const pdfQueuedPct = (pdf.queued_pct != null) ? Number(pdf.queued_pct) : pctFromQueue(pdfQueued, pdfQueueMax);
+
+                setWidth('pdfRunningBar', pdfRunningPct);
+                setWidth('pdfQueuedBar', pdfQueuedPct);
+
+                // rojo si saturado
+                setBg('pdfRunningBar', (pdfRunning >= pdfMax) ? 'rgba(255, 129, 0)' : 'rgba(90,140,255,.85)');
+
+            } catch (e) {
+                // no rompas el navbar
+            }
+        }
+
+        refreshLimiterHUD();
+        setInterval(refreshLimiterHUD, 5000);
+    </script>
     {{/if}}
 </div>
 
-
-<script>
-    const $ = (id) => document.getElementById(id);
-
-    const clampPct = (n) => {
-        n = Number(n);
-        if (!Number.isFinite(n)) n = 0;
-        return Math.max(0, Math.min(100, n));
-    };
-
-    const setText = (id, v) => { const el = $(id); if (el) el.textContent = v; };
-    const setWidth = (id, pct) => { const el = $(id); if (el) el.style.width = clampPct(pct) + '%'; };
-    const setBg = (id, bg) => { const el = $(id); if (el) el.style.background = bg; };
-
-    function pctFromCounts(running, max) {
-        max = Math.max(1, Number(max || 1));
-        return (Number(running || 0) / max) * 100;
-    }
-
-    function pctFromQueue(queued, queueMax) {
-        queueMax = Math.max(1, Number(queueMax || 20));
-        return (Number(queued || 0) / queueMax) * 100;
-    }
-
-    async function refreshLimiterHUD() {
-        try {
-            const r = await fetch('/links/limiter-metrics', { cache: 'no-store' });
-            const j = await r.json();
-            if (!j || !j.ok) return;
-
-            // ===== RRFF =====
-            const rrff = j.rrff || {};
-            const rrffRunning = Number(rrff.running ?? 0);
-            const rrffMax = Number(rrff.max ?? 5);
-            const rrffQueued = Number(rrff.queued ?? 0);
-            const rrffQueueMax = Number(rrff.queue_bar_max ?? 20);
-
-            setText('rrffRunningTxt', `${rrffRunning}`);
-            setText('rrffQueuedTxt', `${rrffQueued}`);
-
-            // si tu endpoint ya manda running_pct/queued_pct úsalo; si no, lo calculo
-            const rrffRunningPct = (rrff.running_pct != null) ? Number(rrff.running_pct) : pctFromCounts(rrffRunning, rrffMax);
-            const rrffQueuedPct = (rrff.queued_pct != null) ? Number(rrff.queued_pct) : pctFromQueue(rrffQueued, rrffQueueMax);
-
-            setWidth('rrffRunningBar', rrffRunningPct);
-            setWidth('rrffQueuedBar', rrffQueuedPct);
-
-            // rojo si saturado
-            setBg('rrffRunningBar', (rrffRunning >= rrffMax) ? 'rgba(255, 129, 0)' : 'rgba(0,255,140,.85)');
-
-            // ===== PDF =====
-            const pdf = j.pdf || {}; // <-- tu endpoint debe mandar esto
-            const pdfRunning = Number(pdf.running ?? 0);
-            const pdfMax = Number(pdf.max ?? 1);
-            const pdfQueued = Number(pdf.queued ?? 0);
-            const pdfQueueMax = Number(pdf.queue_bar_max ?? 20);
-
-            setText('pdfRunningTxt', `${pdfRunning}`);
-            setText('pdfQueuedTxt', `${pdfQueued}`);
-
-            const pdfRunningPct = (pdf.running_pct != null) ? Number(pdf.running_pct) : pctFromCounts(pdfRunning, pdfMax);
-            const pdfQueuedPct = (pdf.queued_pct != null) ? Number(pdf.queued_pct) : pctFromQueue(pdfQueued, pdfQueueMax);
-
-            setWidth('pdfRunningBar', pdfRunningPct);
-            setWidth('pdfQueuedBar', pdfQueuedPct);
-
-            // rojo si saturado
-            setBg('pdfRunningBar', (pdfRunning >= pdfMax) ? 'rgba(255, 129, 0)' : 'rgba(90,140,255,.85)');
-
-        } catch (e) {
-            // no rompas el navbar
-        }
-    }
-
-    refreshLimiterHUD();
-    setInterval(refreshLimiterHUD, 1000);
-</script>
