@@ -101,7 +101,6 @@ setupSessionMiddleware(app).then(sessionMiddleware => {
 
     // Reintentar procesos fallidos automáticamente al iniciar el servidor
     let process_failed_automatic;
-    /*
     setTimeout(async function () {
         io.emit('server:initialice_server', true);
 
@@ -133,36 +132,6 @@ setupSessionMiddleware(app).then(sessionMiddleware => {
                 console.error('❌ Error reintentando ID:', element.id_historial_respuesta_pdf, err);
             }
         }
-    }, 3000);*/
-
-    setTimeout(async function () {
-        io.emit('server:initialice_server', true);
-
-        const socketSimulado = { emit: function () { } };
-
-        const tasks = process_failed_automatic.map((element) => (async () => {
-            try {
-                console.log('📌 Lanzando:', element.id_historial_respuesta_pdf);
-
-                await initial_process(
-                    JSON.parse(element.json_busqueda),
-                    false,
-                    'host',
-                    element.id_historial_respuesta_pdf,
-                    io,
-                    socketSimulado
-                );
-
-                console.log('✅ Reintentado OK:', element.id_historial_respuesta_pdf);
-                return { id: element.id_historial_respuesta_pdf, ok: true };
-            } catch (err) {
-                console.error('❌ Reintentado FAIL:', element.id_historial_respuesta_pdf, err);
-                return { id: element.id_historial_respuesta_pdf, ok: false, error: err?.message };
-            }
-        })());
-
-        const results = await Promise.allSettled(tasks);
-        console.log('🏁 Reintentos finalizados:', results.length);
     }, 3000);
 
 
